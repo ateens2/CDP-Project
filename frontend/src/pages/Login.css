@@ -1,0 +1,152 @@
+/* 전체 배경을 연한 초록색으로 */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+  background-color: #e8f5e9; /* 연한 초록색 배경 */
+}
+
+/* 전체 컨테이너 */
+.login-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* 헤더 스타일 */
+.login-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 40px;
+  border-bottom: 1px solid #c8e6c9; /* 연한 초록색 테두리 */
+}
+
+.login-logo {
+  font-size: 24px;
+  font-weight: bold;
+  background-color: #e8f5e9;
+  border: none;
+  cursor: pointer;
+}
+
+.login-nav a {
+  margin-right: 20px;
+  text-decoration: none;
+  color: #555;
+  font-size: 14px;
+}
+
+/* Launch 버튼도 초록 계열로 */
+.launch-button {
+  padding: 8px 16px;
+  background-color: #388e3c;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* 메인 영역 (로그인 폼) */
+.login-main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+}
+
+/* 로그인 박스 */
+.login-box {
+  width: 400px;
+  max-width: 90%;
+  padding: 40px;
+  border: 1px solid #c8e6c9; /* 연한 초록색 테두리 */
+  border-radius: 8px;
+  text-align: center;
+  background-color: #fff;
+}
+
+/* 로그인 아이콘 (상단 심볼) */
+.login-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px auto;
+  background: #f2f2f2;
+  border-radius: 50%;
+}
+
+/* 제목 */
+.login-box h2 {
+  margin-bottom: 20px;
+  font-size: 22px;
+  color: #388e3c; /* 진한 초록 */
+}
+
+/* 로그인 폼 */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.login-form label {
+  font-weight: 600;
+  margin-top: 10px;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.login-form input {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* 로그인 옵션 (Remember me, Forgot password) */
+.login-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0 20px;
+}
+
+.remember-me {
+  display: flex;
+  align-items: center;
+}
+
+.remember-me label {
+  margin-left: 5px;
+  font-weight: normal;
+  color: #555;
+  font-size: 14px;
+}
+
+/* 로그인 버튼 */
+.login-button {
+  width: 100%;
+  padding: 10px;
+  background-color: #388e3c; /* 진한 초록 */
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.login-button:hover {
+  background-color: #2e7d32; /* 호버 시 더 진한 초록 */
+}
+
+/* 로그인 푸터 */
+.login-footer {
+  margin-top: 20px;
+  font-size: 14px;
+  color: #555;
+}
+
+.login-footer a {
+  color: #388e3c; /* 진한 초록 */
+  text-decoration: none;
+}
