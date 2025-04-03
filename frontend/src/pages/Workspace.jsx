@@ -2,7 +2,7 @@
 import { useContext } from "react";
 import { UserContext } from "../contexts/UserContext";
 import Header from "../components/Header";
-import { UploadSheet } from "../api/UploadSheet";
+import { UploadSheet } from "../auth/UploadSheet";
 import "./Workspace.css";
 
 const Workspace = () => {
