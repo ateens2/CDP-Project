@@ -4,29 +4,26 @@ import { UserContext } from "../contexts/UserContext";
 import Header from "../components/Header";
 import DriveSheetSelector from "../components/DriveSheetSelector";
 import SheetEditor from "../components/SheetEditor";
-import useGoogleAuth from "../hooks/UseGoogleAuth"; // signIn 함수를 가져오기 위함
 import "./Workspace.css";
 
 const Workspace = () => {
   const { user, sheets, setSheets } = useContext(UserContext);
-  const { signIn } = useGoogleAuth();
   const [selectedSheet, setSelectedSheet] = useState(null);
   const [showDriveSelector, setShowDriveSelector] = useState(false);
+
+  // DriveSheetSelector에서 사용자가 선택하면 그 시트를 state에 추가
+  const handleDriveSheetSelect = (sheet) => {
+    console.log("Selected sheet:", sheet);
+    const newSheet = { name: sheet.name, sheetId: sheet.id };
+    setSheets((prevSheets) => [...prevSheets, newSheet]);
+    setShowDriveSelector(false);
+  };
 
   if (!user) {
     return (
       <div className="workspace-unauthorized">
         <Header />
-        <div className="unauthorized-content">
-          <h2>
-            당신의 sheet의 중복을 없애주고 시각화를 강화해줍니다.
-            <br />
-            구글아이디로 시작하세요!
-          </h2>
-          <button className="google-signup-button" onClick={signIn}>
-            <img src="/google-icon.png" alt="Signup with Google" />
-          </button>
-        </div>
+        <h2>Please login first.</h2>
       </div>
     );
   }
@@ -66,11 +63,7 @@ const Workspace = () => {
 
       {showDriveSelector && (
         <DriveSheetSelector
-          onSelect={(sheet) => {
-            const newSheet = { name: sheet.name, sheetId: sheet.id };
-            setSheets((prevSheets) => [...prevSheets, newSheet]);
-            setShowDriveSelector(false);
-          }}
+          onSelect={handleDriveSheetSelect}
           onCancel={() => setShowDriveSelector(false)}
         />
       )}

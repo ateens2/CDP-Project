@@ -1,26 +1,29 @@
 // src/App.jsx
-import { useState } from "react";
+import React, { useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
+import useGoogleAuth from "./hooks/UseGoogleAuth";
 import { UserContext } from "./contexts/UserContext";
-import Header from "./components/Header";
 import Login from "./pages/Login";
-import Workspace from "./pages/Workspace";
 import Signup from "./pages/Signup";
-function App() {
-  // 로그인된 사용자 정보 (예: { name: "홍길동" })
-  const [user, setUser] = useState(null);
+import Workspace from "./pages/Workspace";
 
-  // 사용자별 시트 정보 (배열)
+function App() {
+  const { gapiLoaded, isSignedIn, signIn, signOut } = useGoogleAuth();
+  const [user, setUser] = useState(null);
   const [sheets, setSheets] = useState([]);
+
+  if (!gapiLoaded) return <div>Loading Google API...</div>;
 
   return (
     <UserContext.Provider value={{ user, setUser, sheets, setSheets }}>
       <Router>
         <Routes>
+          <Route
+            path="/login"
+            element={<Login signIn={signIn} isSignedIn={isSignedIn} />}
+          />
+          <Route path="/signup" element={<Signup />} />
           <Route path="/" element={<Workspace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/Signup" element={<Signup />} />
         </Routes>
       </Router>
     </UserContext.Provider>
