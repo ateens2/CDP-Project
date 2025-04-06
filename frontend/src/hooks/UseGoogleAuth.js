@@ -2,8 +2,7 @@
 import { useEffect, useState } from "react";
 
 // TODO: 아래 값을 실제 Google Cloud Console에서 발급받은 값으로 변경하세요.
-const CLIENT_ID = "267145768352-q28nigb1hsn9ckr0nk5b663gi5jj7k9d.apps.googleusercontent.com";
-const API_KEY = "AIzaSyDtIXdcTi7-WHAbZerQUWhUl6KH1Xizllk";
+
 const DISCOVERY_DOCS = [
   "https://sheets.googleapis.com/$discovery/rest?version=v4",
   "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
