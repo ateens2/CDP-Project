@@ -1,19 +1,22 @@
 // src/components/Header.jsx
 import { useContext } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { UserContext } from "../contexts/UserContext";
-import { LogoutUser } from "../auth/Logout";
+import { logoutUser } from "../auth/Logout";
 import "./Header.css";
 
 const Header = ({ hideTitle }) => {
   const { user, setUser, setSheets } = useContext(UserContext);
   const navigate = useNavigate();
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
   const handleLogout = async () => {
-    await LogoutUser(); // 백엔드 로그아웃 API 호출
-    setUser(null);
-    setSheets([]);
-    navigate("/");
+    const success = await logoutUser(backendUrl);
+    if (success) {
+      setUser(null);
+      setSheets([]);
+      navigate("/login");
+    }
   };
 
   return (
@@ -25,7 +28,7 @@ const Header = ({ hideTitle }) => {
       <div className="header-right">
         {user ? (
           <>
-            <span>{user.email}</span>
+            <span>{user.name} 님</span>
             <button className="logout-button" onClick={handleLogout}>
               Logout
             </button>

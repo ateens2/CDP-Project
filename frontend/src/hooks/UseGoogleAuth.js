@@ -1,13 +1,13 @@
-// src/hooks/useGoogleAuth.js
+// src/hooks/UseGoogleAuth.js
 import { useEffect, useState } from "react";
 
-// TODO: 아래 값을 실제 Google Cloud Console에서 발급받은 값으로 변경하세요.
-
+const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 const DISCOVERY_DOCS = [
   "https://sheets.googleapis.com/$discovery/rest?version=v4",
   "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
 ];
-const SCOPES = "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive";
+const SCOPES = "openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive";
 
 function useGoogleAuth() {
   const [gapiLoaded, setGapiLoaded] = useState(false);
@@ -34,28 +34,22 @@ function useGoogleAuth() {
 
     const initializeGoogleAuth = async () => {
       try {
-        // Google Identity Services 스크립트 로드
+        // Load Google Identity Services and gapi
         await loadScript("https://accounts.google.com/gsi/client");
-        
-        // gapi 스크립트 로드
         await loadScript("https://apis.google.com/js/api.js");
-        
-        // gapi 클라이언트 초기화
         await new Promise((resolve) => {
           window.gapi.load("client", resolve);
         });
-        
         await window.gapi.client.init({
           apiKey: API_KEY,
           discoveryDocs: DISCOVERY_DOCS,
         });
-        
         setGapiLoaded(true);
 
-        // Google Identity Services 토큰 클라이언트 초기화
         const client = window.google.accounts.oauth2.initTokenClient({
           client_id: CLIENT_ID,
           scope: SCOPES,
+          // 일반 signIn 호출 시 팝업이 뜨게 됩니다.
           callback: (response) => {
             console.log("OAuth response:", response);
             if (response.access_token) {
@@ -64,7 +58,6 @@ function useGoogleAuth() {
             }
           },
         });
-        
         setTokenClient(client);
       } catch (error) {
         console.error("Error initializing Google Auth:", error);
@@ -74,6 +67,7 @@ function useGoogleAuth() {
     initializeGoogleAuth();
   }, []);
 
+  // 기존 signIn: 기본적으로 팝업을 띄웁니다.
   const signIn = () => {
     if (!tokenClient) {
       console.error("Token client not initialized");
@@ -86,6 +80,19 @@ function useGoogleAuth() {
     }
   };
 
+  // silentSignIn: prompt 없이 토큰 요청 (팝업 없이 시도)
+  const silentSignIn = () => {
+    if (!tokenClient) {
+      console.error("Token client not initialized");
+      return;
+    }
+    try {
+      tokenClient.requestAccessToken({ prompt: "none" });
+    } catch (error) {
+      console.error("Error in silent sign in:", error);
+    }
+  };
+
   const signOut = async () => {
     const token = window.gapi.client.getToken();
     if (token) {
@@ -95,7 +102,7 @@ function useGoogleAuth() {
     }
   };
 
-  return { gapiLoaded, isSignedIn, signIn, signOut };
+  return { gapiLoaded, isSignedIn, signIn, silentSignIn, signOut };
 }
 
 export default useGoogleAuth;

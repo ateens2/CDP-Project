@@ -1,0 +1,9 @@
+# Node.js dependencies
+node_modules/
+
+# 환경 변수 파일
+.env
+
+# 기타 빌드 파일들 (예: dist, build 폴더 등)
+dist/
+build/

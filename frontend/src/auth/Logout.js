@@ -1,18 +1,17 @@
-export async function LogoutUser() {
-    try {
-      const response = await fetch("http://backend-url/api/logout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        // 필요한 경우 쿠키 등을 포함하려면 credentials: "include" 옵션 추가
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Logout error:", errorData);
-      }
-    } catch (error) {
-      console.error("Logout error:", error);
+// src/auth/Logout.js
+export async function logoutUser(backendUrl) {
+  try {
+    const response = await fetch(`${backendUrl}/auth/logout`, {
+      method: "GET",
+      credentials: "include", // 쿠키를 전송
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Logout failed");
     }
+    return true;
+  } catch (error) {
+    console.error("Logout error:", error);
+    return false;
   }
-  
+}
