@@ -1,24 +1,24 @@
 // src/pages/Workspace.jsx
 import React, { useContext, useState, useEffect } from "react";
 import { UserContext } from "../contexts/UserContext";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import DriveSheetSelector from "../components/DriveSheetSelector";
-import SheetEditor from "../components/SheetEditor";
 import "./Workspace.css";
 
 const Workspace = () => {
   const { user, sheets, setSheets } = useContext(UserContext);
   const [selectedSheet, setSelectedSheet] = useState(null);
   const [showDriveSelector, setShowDriveSelector] = useState(false);
-  const backendUrl = import.meta.env.VITE_BACKEND_URL; // 예: http://localhost:3000
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+  const navigate = useNavigate();
 
-  // useEffect: 로그인한 사용자의 DB에 저장된 sheet_file(파일 ID)이 있으면, Google Drive API로 파일 정보를 가져와 sheets 배열에 추가
+  // DB에 저장된 시트 정보가 있으면 Google API를 통해 실제 파일 제목을 가져와 단일 시트 로그로 저장
   useEffect(() => {
     if (user && user.sheet_file) {
-      // 이미 추가되어 있지 않은 경우에만 처리
+      // sheets 배열이 빈 상태이면 반드시 Drive API를 호출해서 최신 파일 정보를 받아옴
       if (!sheets.find((s) => s.sheetId === user.sheet_file)) {
         if (window.gapi && window.gapi.client) {
-          // 먼저 drive API를 명시적으로 로드합니다.
           window.gapi.client.load("drive", "v3")
             .then(() => {
               return window.gapi.client.drive.files.get({
@@ -29,12 +29,11 @@ const Workspace = () => {
             .then((response) => {
               const fileData = response.result;
               const newSheet = { name: fileData.name, sheetId: fileData.id };
-              setSheets((prevSheets) => [...prevSheets, newSheet]);
+              setSheets([newSheet]);  // 단일 시트 로그만 유지
               setSelectedSheet(newSheet);
             })
             .catch((error) => {
               console.error("Error retrieving file info:", error);
-              // 403 Forbidden이 발생하면, 해당 파일에 대한 접근 권한을 확인하세요.
             });
         } else {
           console.error("Google API client not loaded.");
@@ -43,14 +42,26 @@ const Workspace = () => {
     }
   }, [user, sheets, setSheets]);
 
-  // 사용자가 DriveSheetSelector에서 시트를 선택하면 호출됨
+  // DriveSheetSelector에서 시트를 선택하면 DB 업데이트 및 Google Drive API 호출로 바로 시트 정보 반영
   const handleDriveSheetSelect = async (sheet) => {
     const newSheet = { name: sheet.name, sheetId: sheet.id };
-    setSheets((prevSheets) => [...prevSheets, newSheet]);
-    setShowDriveSelector(false);
-
-    // 백엔드에 사용자의 sheet_file 정보를 업데이트 요청
+    if (window.gapi && window.gapi.client) {
+      await window.gapi.client.load("drive", "v3");
+      const driveResponse = await window.gapi.client.drive.files.get({
+        fileId: newSheet.sheetId,
+        fields: "id, name",
+      });
+      const updatedSheet = {
+        name: driveResponse.result.name,
+        sheetId: driveResponse.result.id,
+      };
+      setSheets([updatedSheet]);
+      setSelectedSheet(updatedSheet);
+    } else {
+      console.error("Google API client not loaded.");
+    }
     try {
+      // DB 업데이트 요청
       const response = await fetch(`${backendUrl}/auth/google/updateSheet`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -61,9 +72,18 @@ const Workspace = () => {
       });
       const data = await response.json();
       console.log("Sheet update response:", data);
+
     } catch (error) {
       console.error("Error updating sheet info in DB:", error);
+      alert("fail to fetch");
     }
+    // 시트 목록 컨테이너 닫기
+    setShowDriveSelector(false);
+  };
+
+  // 기존 시트 로그의 시트 이름을 클릭하면 SheetEditor 화면으로 전환하여 시트를 편집
+  const handleExistingSheetClick = (sheet) => {
+    navigate("/sheet-editor", { state: { sheet } });
   };
 
   if (!user) {
@@ -79,17 +99,18 @@ const Workspace = () => {
     <div className="workspace">
       <Header />
       <main className="main">
-        <div className="box sheet-box">
+        <div className={`box sheet-box ${showDriveSelector ? "slide-left" : ""}`}>
           <h2 className="box-title">sheets log</h2>
           <div className="sheet-list">
             {sheets.length === 0 ? (
               <p>No sheets yet.</p>
             ) : (
+              // 단일 시트 로그로 표시하며, 클릭 시 SheetEditor 화면으로 전환
               sheets.map((sheet, index) => (
                 <div
                   key={index}
                   className="sheet-item"
-                  onClick={() => setSelectedSheet(sheet)}
+                  onClick={() => handleExistingSheetClick(sheet)}
                 >
                   {sheet.name}
                 </div>
@@ -98,21 +119,22 @@ const Workspace = () => {
           </div>
         </div>
       </main>
-      <div className="add-button-container">
+      <div className={`add-button-container ${showDriveSelector ? "moved" : ""}`}>
         <button
           className="upload-button"
           onClick={() => setShowDriveSelector(true)}
         >
-          + Add Sheet
+          {sheets.length > 0 ? "Update" : "+ Add Sheet"}
         </button>
       </div>
       {showDriveSelector && (
-        <DriveSheetSelector
-          onSelect={handleDriveSheetSelect}
-          onCancel={() => setShowDriveSelector(false)}
-        />
+        <div className="drive-sheet-selector-container open">
+          <DriveSheetSelector
+            onSelect={handleDriveSheetSelect}
+            onCancel={() => setShowDriveSelector(false)}
+          />
+        </div>
       )}
-      {selectedSheet && <SheetEditor sheet={selectedSheet} />}
     </div>
   );
 };
