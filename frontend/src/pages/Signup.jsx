@@ -18,7 +18,8 @@ const Signup = () => {
     try {
       const data = await signupUser({ name, email, phone }, backendUrl);
       alert(`Signup complete! Welcome, ${data.user.name}`);
-      navigate("/login");
+      // 회원가입 완료 후 workspace로 이동
+      navigate("/");
     } catch (error) {
       console.error("Signup error:", error);
       alert("An error occurred during signup.");
