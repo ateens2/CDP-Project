@@ -1,0 +1,114 @@
+/* src/components/CustomerEditer.css */
+
+.customer-editer-container {
+    padding: 1rem;
+    background-color: #fff;
+    border-radius: 4px;
+    overflow-y: auto;
+  }
+  
+  /* 상단 기본 정보 영역 */
+  .customer-editer-header {
+    display: flex;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 1rem;
+  }
+  .customer-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #c8e6c9; /* 연한 초록 배경 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #1b5e20;  /* 진한 초록 텍스트 (필요에 따라 조정) */
+    font-weight: bold;
+    margin-right: 1rem;
+  }
+  .customer-basic-info {
+    flex: 1;
+  }
+  .customer-name {
+    font-size: 1.5rem;
+    margin: 0;
+  }
+  .customer-contact {
+    font-size: 1rem;
+    color: #555;
+  }
+  
+  /* 탭 버튼 영역 */
+  .tab-buttons {
+    display: flex;
+    gap: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .tab-buttons button {
+    background: none;
+    border: none;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    font-weight: 500;
+    color: #555;
+    transition: background-color 0.2s;
+  }
+  .tab-buttons button:hover {
+    background-color: #e8f5e9; /* 연한 초록 느낌의 hover 색상 */
+  }
+  .tab-buttons button.active {
+    border-bottom: 3px solid #66bb6a; /* 활성 탭 밑줄 연한 초록 */
+    color: #66bb6a;
+  }
+  
+  /* 탭 콘텐츠 영역 */
+  .tab-content {
+    margin-bottom: 1rem;
+  }
+  .tab-panel {
+    padding: 0.5rem 0;
+  }
+  .tab-panel h3 {
+    margin: 0 0 0.5rem 0;
+  }
+  
+  /* 각 입력 필드 */
+  .field {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .field label {
+    width: 30%;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .field input {
+    width: 70%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  /* 저장 버튼 영역 */
+  .customer-editer-actions {
+    text-align: right;
+  }
+  .panel-save-button {
+    padding: 0.5rem 1rem;
+    border: none;
+    background-color: #66bb6a; /* 연한 초록 */
+    color: #fff;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .panel-save-button:hover {
+    background-color: #388e3c; /* hover 시 조금 더 진한 초록 */
+  }
+  

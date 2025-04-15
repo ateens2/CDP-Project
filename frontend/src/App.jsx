@@ -11,8 +11,10 @@ import { UserContext } from "./contexts/UserContext";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Workspace from "./pages/Workspace";
-import SheetEditor from"./components/SheetEditor"
+import SheetEditor from "./components/SheetEditor";
 import InitialPage from "./pages/InitialPage";
+import CustomerManagement from "./pages/CustomerManagement";
+import DataAnalytics from "./pages/DataAnalytics";
 
 function App() {
   const { gapiLoaded } = useGoogleAuth();
@@ -35,6 +37,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/sheet-editor" element={<SheetEditor />} />
+          <Route path="/customer-management" element={<CustomerManagement />} />
+          <Route path="/data-analytics" element={<DataAnalytics />} />
           <Route path="/" element={user ? <Workspace /> : <InitialPage />} />
         </Routes>
       </UserProvider>
@@ -42,7 +46,14 @@ function App() {
   );
 }
 
-function UserProvider({ backendUrl, user, setUser, sheets, setSheets, children }) {
+function UserProvider({
+  backendUrl,
+  user,
+  setUser,
+  sheets,
+  setSheets,
+  children,
+}) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
@@ -69,12 +80,12 @@ function UserProvider({ backendUrl, user, setUser, sheets, setSheets, children }
         if (data.user) {
           setUser(data.user);
           if (data.user.sheet_file) {
-            // 기존에는 하드코딩된 이름("My Sheet")으로 셋팅했으나,
-            // 실제 Google Drive API를 통해 파일 제목을 가져올 수 있도록 초기값을 빈 배열로 설정합니다.
             setSheets([]);
           }
           if (data.user.accessToken && window.gapi && window.gapi.client) {
-            window.gapi.client.setToken({ access_token: data.user.accessToken });
+            window.gapi.client.setToken({
+              access_token: data.user.accessToken,
+            });
             console.log("GAPI token:", window.gapi.client.getToken());
           }
         }
@@ -88,7 +99,7 @@ function UserProvider({ backendUrl, user, setUser, sheets, setSheets, children }
   }, [backendUrl, navigate, setUser, setSheets]);
 
   if (loading) return <div>Loading session...</div>;
-  
+
   return (
     <UserContext.Provider value={{ user, setUser, sheets, setSheets }}>
       {children}
