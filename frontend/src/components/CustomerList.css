@@ -1,0 +1,77 @@
+/* src/components/CustomerList.css */
+.customer-list-container {
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.25rem;
+  padding: 1rem;
+}
+.customer-list-item .customer-name {
+  font-size: 1rem; /* 고객 리스트에 적절한 폰트 크기로 지정 */
+  /* 필요에 따라 line-height, font-weight 등도 조정하세요 */
+}
+.customer-list-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.customer-count {
+  font-size: 1rem;
+  margin-left: 0.5rem;
+  color: #555;
+}
+
+.customer-list-ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 고객 항목은 가로 flex 레이아웃, 여백을 충분히 주어 가독성 향상 */
+.customer-list-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0; /* 위아래 여백을 늘림 */
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+  letter-spacing: 0.5px;
+}
+
+/* 마우스 hover 시 Category와 유사한 연한 녹색 배경과 약간의 확대 효과 */
+.customer-list-item:hover {
+  background-color: #c8e6c9;
+  transform: scale(1.02);
+}
+
+/* 선택된 항목은 좀 더 진하게 표시 */
+.customer-list-item.selected {
+  background-color: #dbeafe;
+}
+
+/* 각 필드를 가로로 배치하고 중앙 정렬, 내부 여백 추가 */
+.customer-field {
+  flex: 1;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #374151;
+  padding: 0 0.5rem;
+}
+
+/* 각 항목의 비율을 조정 (필요에 따라 값 조정) */
+.customer-name {
+  flex: 2;
+}
+
+.customer-email {
+  flex: 3;
+}
+
+.customer-contact {
+  flex: 2;
+}
+
+.customer-order-status {
+  flex: 1;
+}

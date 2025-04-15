@@ -1,5 +1,5 @@
 // src/pages/Workspace.jsx
-import React, { useContext, useState, useEffect, useCallback } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { UserContext } from "../contexts/UserContext";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -13,7 +13,7 @@ const Workspace = () => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const navigate = useNavigate();
 
-  // 초기 시트 정보 로드
+  // 사용자 DB에 저장된 시트 id가 있다면 Google API를 통해 실제 파일 정보를 가져와 단일 시트 로그로 업데이트
   useEffect(() => {
     const loadSheetInfo = async () => {
       if (user?.sheet_file && sheets.length === 0 && window.gapi?.client) {
@@ -26,7 +26,7 @@ const Workspace = () => {
 
           const fileData = response.result;
           const newSheet = { name: fileData.name, sheetId: fileData.id };
-          setSheets([newSheet]);
+          setSheets([newSheet]); // 단일 시트 로그 유지
           setSelectedSheet(newSheet);
         } catch (error) {
           console.error("Error retrieving file info:", error);
@@ -35,13 +35,17 @@ const Workspace = () => {
     };
 
     loadSheetInfo();
-  }, [user?.sheet_file, sheets.length, setSheets, setSelectedSheet]);
+  }, [setSheets, sheets.length, user.sheet_file]); // 의존성 배열에서 sheets와 setSheets 제거
 
-  // DriveSheetSelector에서 시트를 선택하면 DB 업데이트 및 Google Drive API 호출로 바로 시트 정보 반영
+  // DriveSheetSelector에서 시트를 선택하면 바로 DB 업데이트 및 Google API 호출 수행
   const handleDriveSheetSelect = async (sheet) => {
     const newSheet = { name: sheet.name, sheetId: sheet.id };
 
     try {
+      // 먼저 UI 상태 업데이트
+      setSelectedSheet(newSheet);
+      setShowDriveSelector(false);
+
       // DB 업데이트 요청
       const response = await fetch(`${backendUrl}/auth/google/updateSheet`, {
         method: "POST",
@@ -51,23 +55,41 @@ const Workspace = () => {
           sheet_file: newSheet.sheetId,
         }),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to update sheet information");
+      }
+
       const data = await response.json();
       console.log("Sheet update response:", data);
 
-      // DB 업데이트가 성공하면 상태 업데이트
-      setSheets([newSheet]);
-      setSelectedSheet(newSheet);
+      // 업데이트 후, Google Drive API에서 최신 파일 이름 조회
+      if (window.gapi && window.gapi.client) {
+        await window.gapi.client.load("drive", "v3");
+        const driveResponse = await window.gapi.client.drive.files.get({
+          fileId: newSheet.sheetId,
+          fields: "id, name",
+        });
+
+        const updatedSheet = {
+          name: driveResponse.result.name,
+          sheetId: driveResponse.result.id,
+        };
+
+        // 상태 업데이트를 한 번에 처리
+        setSheets([updatedSheet]);
+      } else {
+        console.error("Google API client not loaded.");
+      }
     } catch (error) {
       console.error("Error updating sheet info in DB:", error);
-      alert("fail to fetch");
+      alert("시트 정보 업데이트에 실패했습니다.");
     }
-
-    setShowDriveSelector(false);
   };
 
-  // 기존 시트 로그의 시트 이름을 클릭하면 SheetEditor 화면으로 전환하여 시트를 편집
+  // 시트 로그 항목 클릭 시, 즉시 고객 관리 화면(CustomerManagement)으로 이동
   const handleExistingSheetClick = (sheet) => {
-    navigate("/sheet-editor", { state: { sheet } });
+    navigate("/customer-management", { state: { sheet } });
   };
 
   if (!user) {
@@ -91,6 +113,7 @@ const Workspace = () => {
             {sheets.length === 0 ? (
               <p>No sheets yet.</p>
             ) : (
+              // 단일 시트 로그 항목, 클릭 시 고객 관리 화면으로 이동
               sheets.map((sheet, index) => (
                 <div
                   key={index}
