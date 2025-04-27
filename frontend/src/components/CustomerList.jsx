@@ -13,12 +13,12 @@ const CustomerList = ({
       <h2 className="customer-list-title">
         고객 목록 <span className="customer-count">(총 {totalCount}명)</span>
       </h2>
-      <ul className="customer-list-ul">
+      <ul className="customer-list-ul" title="상세정보 보기">
         {customers.map((customer, index) => {
           // 키 처리: 만약 sheet 헤더가 "고객 이름" 대신 다른 값이면, 대체로 customer.name 등을 사용
           const customerName = customer["고객명"] || customer.name || "";
           const email = customer["이메일 주소"] || customer.email || "";
-          const contact = customer["연락처"] || customer.contact || "";
+          const contact = customer["휴대폰번호"] || customer.contact || "";
           const orderStatus =
             customer["결제 상태"] || customer.order_status || "";
           return (
