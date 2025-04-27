@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import "./CustomerEditer.css";
 
-const CustomerEditer = ({ customer, onChange, onClose, onSave }) => {
+const CustomerEditer = ({ customer, onChange, onClose, onSave, onDelete }) => {
   // 탭 상태: "overview", "orders", "inquiries"
   const [selectedTab, setSelectedTab] = useState("overview");
 
@@ -77,7 +77,7 @@ const CustomerEditer = ({ customer, onChange, onClose, onSave }) => {
               />
             </div>
             <div className="field">
-              <label>휴대폰번호호:</label>
+              <label>휴대폰번호:</label>
               <input
                 type="text"
                 value={customer["휴대폰번호"] || ""}
@@ -97,7 +97,7 @@ const CustomerEditer = ({ customer, onChange, onClose, onSave }) => {
               <input
                 type="text"
                 value={customer["배송지 주소"] || ""}
-                onChange={(e) => onChange("주소", e.target.value)}
+                onChange={(e) => onChange("배송지 주소", e.target.value)}
               />
             </div>
             {/* 추가로 필요한 정보를 여기에 넣으면 됩니다 */}
@@ -211,6 +211,9 @@ const CustomerEditer = ({ customer, onChange, onClose, onSave }) => {
       <div className="customer-editer-actions">
         <button className="panel-save-button" onClick={onSave}>
           저장
+        </button>
+        <button className="panel-delete-button" onClick={onDelete}>
+          삭제
         </button>
       </div>
     </div>

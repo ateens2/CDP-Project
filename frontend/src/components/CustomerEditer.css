@@ -94,14 +94,16 @@
     border-radius: 4px;
   }
   
-  /* 저장 버튼 영역 */
   .customer-editer-actions {
-    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem; /* 버튼 사이 간격 */
+    margin-top: 1rem; /* 필요시 위쪽 여백 */
   }
   .panel-save-button {
     padding: 0.5rem 1rem;
     border: none;
-    background-color: #66bb6a; /* 연한 초록 */
+    background-color: #388e3c;  /* 기존 #388e3c 보다 더 진한 green-800 계열 */
     color: #fff;
     font-weight: bold;
     border-radius: 4px;
@@ -109,6 +111,21 @@
     transition: background-color 0.2s;
   }
   .panel-save-button:hover {
-    background-color: #388e3c; /* hover 시 조금 더 진한 초록 */
+    background-color: #33691E;  /* 기존 hover 색 유지 */
+  }
+  
+  /* 삭제 버튼은 기존 스타일을 유지하세요 */
+  .panel-delete-button {
+    padding: 0.5rem 1rem;
+    border: none;
+    background-color: #e53935; /* 예: 빨간색으로 구분 (원하시면 그대로 두셔도 됩니다) */
+    color: #fff;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .panel-delete-button:hover {
+    background-color: #d32f2f;
   }
   

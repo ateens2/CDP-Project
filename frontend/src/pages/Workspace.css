@@ -47,12 +47,15 @@
 
 /* 실제 시트 아이템 */
 .sheet-item {
-  background-color: rgb(246,246,246);
-  border-radius: 4px;
-  padding: 5px;
-  margin: 10px 0;
-  color: #333;
-  text-align: left;
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  transform-origin: center center;
+}
+
+.sheet-item:hover {
+  background-color: #e8f5e9;
+  transform: scale(1.02);
 }
 
 /* 업로드 버튼 스타일 */
@@ -166,4 +169,39 @@
   background-color: #ff5252;
   color: #fff;
   border: none;
+}
+.sheet-box {
+  position: relative;
+}
+
+/* 물음표 아이콘 스타일 */
+.sheet-help-icon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 1.2rem;
+  color: #666;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.sheet-help-icon:hover {
+  color: #333;
+}
+
+/* 도움말 textarea */
+.help-textarea {
+  position: absolute;
+  top: 12px;               /* 아이콘과 수평 맞추기 */
+  left: 100%;              /* .sheet-box의 오른쪽 가장자리에 붙이기 */
+  margin-left: 8px;        /* 아이콘과 textarea 사이 간격 */
+  width: 300px;
+  height: 400px;
+  padding: 8px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f9f9f9;
+  resize: none;
+  z-index: 5;
 }
