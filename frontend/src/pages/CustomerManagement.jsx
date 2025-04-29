@@ -13,29 +13,50 @@ const CustomerManagement = () => {
   const sheet = state?.sheet;
   const { user } = useContext(UserContext);
 
+  // 고객 목록 및 편집 상태
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [isEditPanelOpen, setIsEditPanelOpen] = useState(false);
+  // 페이징
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
-
+  // 시트 메타
   const [sheetName, setSheetName] = useState("");
   const [sheetHeaders, setSheetHeaders] = useState([]);
   const [headerMap, setHeaderMap] = useState({});
   const [lastChangedKey, setLastChangedKey] = useState(null);
   const [activeSheetId, setActiveSheetId] = useState(null);
-
+  // 검색
   const [search, setSearch] = useState("");
   const onChangeSearch = (e) => setSearch(e.target.value);
-
+  // 편집 패널 및 리스트 컨테이너 refs (클릭아웃 감지용)
   const detailPanelRef = useRef(null);
   const listContainerRef = useRef(null);
+
+  // --- 라디오칩 옵션 생성 (시트에서 추출된 고유 값) ---
+  const paymentStatuses = Array.from(
+    new Set(customers.map((c) => c["결제 상태"]).filter((v) => v))
+  );
+  const paymentMethods = Array.from(
+    new Set(customers.map((c) => c["결제 수단"]).filter((v) => v))
+  );
+  const issueTypes = Array.from(
+    new Set(customers.map((c) => c["이슈 유형"]).filter((v) => v))
+  );
+  const progressStatuses = Array.from(
+    new Set(customers.map((c) => c["진행상태"]).filter((v) => v))
+  );
+  const options = {
+    paymentStatuses,
+    paymentMethods,
+    issueTypes,
+    progressStatuses,
+  };
 
   // 시트 데이터 로드 및 헤더 매핑
   const fetchSheetData = async () => {
     if (!sheet || !window.gapi?.client) return;
     await window.gapi.client.load("sheets", "v4");
-
     const meta = await window.gapi.client.sheets.spreadsheets.get({
       spreadsheetId: sheet.sheetId,
     });
@@ -52,26 +73,28 @@ const CustomerManagement = () => {
     const vals = resp.result.values || [];
     if (vals.length < 2) return;
 
+    // 헤더, 맵 설정
     const headers = vals[0];
     setSheetHeaders(headers);
-    const map = headers.reduce((acc, h, i) => {
-      acc[h] = { index: i, letter: String.fromCharCode(65 + i) };
-      return acc;
-    }, {});
+    const map = headers.reduce(
+      (acc, h, i) => ({
+        ...acc,
+        [h]: { index: i, letter: String.fromCharCode(65 + i) },
+      }),
+      {}
+    );
     setHeaderMap(map);
 
-    // 빈 행 제거
+    // 데이터 객체화 및 필터링
     const allRows = vals.slice(1).map((row, idx) => {
-      const obj = headers.reduce((o, h, i) => {
-        o[h] = row[i] ?? "";
-        return o;
-      }, {});
+      const obj = headers.reduce(
+        (o, h, i) => ({ ...o, [h]: row[i] ?? "" }),
+        {}
+      );
       return { __rowNum__: idx + 2, ...obj };
     });
     const filtered = allRows.filter((r) =>
-      Object.entries(r)
-        .filter(([key]) => key !== "__rowNum__")
-        .some(([_, val]) => val !== "")
+      Object.entries(r).some(([k, v]) => k !== "__rowNum__" && v !== "")
     );
     setCustomers(filtered);
     if (filtered.length) setSelectedCustomer(filtered[0]);
@@ -97,11 +120,10 @@ const CustomerManagement = () => {
     setSelectedCustomer((prev) => ({ ...prev, [key]: val }));
   };
 
-  // 저장: 추가 or 수정
+  // 저장 (추가 or 수정)
   const handleSaveChanges = async () => {
     if (!sheet || !window.gapi?.client) return;
     await window.gapi.client.load("sheets", "v4");
-
     if (selectedCustomer.__rowNum__ == null) {
       // 추가
       const values = sheetHeaders.map((h) => selectedCustomer[h] ?? "");
@@ -112,16 +134,16 @@ const CustomerManagement = () => {
         insertDataOption: "INSERT_ROWS",
         resource: { values: [values] },
       });
-      alert("새로운 고객이 시트에 추가되었습니다. 페이지를 새로고침합니다.");
+      alert("새로운 고객이 시트에 추가되었습니다.");
       window.location.reload();
       return;
     } else {
       // 수정
       const rowNum = selectedCustomer.__rowNum__;
       const key = lastChangedKey;
-      if (rowNum != null && key) {
+      if (rowNum && key) {
         const col = headerMap[key].letter;
-        const range = `'${sheetName}'!${col}${rowNum}:${col}${rowNum}`;
+        const range = `'${sheetName}'!${col}${rowNum}`;
         await window.gapi.client.sheets.spreadsheets.values.update({
           spreadsheetId: sheet.sheetId,
           range,
@@ -138,27 +160,28 @@ const CustomerManagement = () => {
     setIsEditPanelOpen(false);
   };
 
-  // 삭제: 행 제거
+  // 삭제
   const handleDelete = async () => {
     if (!sheet || activeSheetId == null || selectedCustomer.__rowNum__ == null)
       return;
     await window.gapi.client.load("sheets", "v4");
     const rowIndex = selectedCustomer.__rowNum__ - 1;
-    const requests = [
-      {
-        deleteDimension: {
-          range: {
-            sheetId: activeSheetId,
-            dimension: "ROWS",
-            startIndex: rowIndex,
-            endIndex: rowIndex + 1,
-          },
-        },
-      },
-    ];
     await window.gapi.client.sheets.spreadsheets.batchUpdate({
       spreadsheetId: sheet.sheetId,
-      resource: { requests },
+      resource: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: activeSheetId,
+                dimension: "ROWS",
+                startIndex: rowIndex,
+                endIndex: rowIndex + 1,
+              },
+            },
+          },
+        ],
+      },
     });
     alert("고객이 삭제되었습니다.");
     window.location.reload();
@@ -171,12 +194,12 @@ const CustomerManagement = () => {
   const totalPages = Math.ceil(customers.length / itemsPerPage);
   const filteredList = pageRows.filter((c) => {
     const q = search.toLowerCase();
-    return ["고객명", "이메일 주소", "연락처", "주문 상태"].some((field) =>
-      c[field]?.toLowerCase().includes(q)
+    return ["고객명", "이메일 주소", "연락처", "결제 상태"].some((f) =>
+      c[f]?.toLowerCase().includes(q)
     );
   });
 
-  // 외부 클릭 시 닫기
+  // 상세 패널 외부 클릭 시 닫기
   useEffect(() => {
     const handler = (e) => {
       if (
@@ -193,7 +216,7 @@ const CustomerManagement = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, [isEditPanelOpen]);
 
-  // 네비게이션
+  // 페이지네이션 그룹 계산
   const groupSize = 10;
   const groupStart = Math.floor((currentPage - 1) / groupSize) * groupSize + 1;
   const groupEnd = Math.min(groupStart + groupSize - 1, totalPages);
@@ -209,28 +232,27 @@ const CustomerManagement = () => {
           ref={listContainerRef}
           className={`customer-list-section ${isEditPanelOpen ? "shrink" : ""}`}
         >
+          {/* 툴바: 검색, 엑셀, 신규 */}
           <div className="toolbar">
             <div className="search-bar-wrapper">
-              <i className="fas fa-search" title="검색" />
+              <i className="fas fa-search" />
               <input
                 value={search}
                 onChange={onChangeSearch}
-                placeholder="고객명, 이메일, 전화번호, 결제상태로 검색하세요"
+                placeholder="고객명, 이메일, 전화번호, 결제상태로 검색"
               />
             </div>
             <div className="toolbar-buttons">
-              <button className="toolbar-button" title="엑셀로 내보내기">
+              <button className="toolbar-button" title="엑셀 내보내기">
                 <i className="fas fa-file-excel" />
               </button>
-              <button
-                className="btn-new-customer"
-                onClick={handleNewCustomer}
-                title="신규 고객"
-              >
+              <button className="btn-new-customer" onClick={handleNewCustomer}>
                 <i className="fas fa-plus" /> 신규 고객
               </button>
             </div>
           </div>
+
+          {/* 고객 리스트 */}
           <CustomerList
             customers={filteredList}
             totalCount={customers.length}
@@ -241,6 +263,8 @@ const CustomerManagement = () => {
             }}
             onDelete={handleDelete}
           />
+
+          {/* 페이징 */}
           {totalPages > 1 && (
             <div className="pagination">
               <button
@@ -256,18 +280,18 @@ const CustomerManagement = () => {
                   &laquo;
                 </button>
               )}
-              {Array.from({ length: groupEnd - groupStart + 1 }, (_, i) => {
-                const p = groupStart + i;
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setCurrentPage(p)}
-                    className={currentPage === p ? "active" : ""}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
+              {Array.from(
+                { length: groupEnd - groupStart + 1 },
+                (_, i) => groupStart + i
+              ).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setCurrentPage(p)}
+                  className={currentPage === p ? "active" : ""}
+                >
+                  {p}
+                </button>
+              ))}
               {groupEnd < totalPages && (
                 <button onClick={() => setCurrentPage(groupEnd + 1)}>
                   &raquo;
@@ -285,6 +309,7 @@ const CustomerManagement = () => {
           )}
         </div>
       </div>
+
       <div
         ref={detailPanelRef}
         className={`customer-edit-panel ${isEditPanelOpen ? "open" : ""}`}
@@ -292,6 +317,7 @@ const CustomerManagement = () => {
         {selectedCustomer ? (
           <CustomerEditer
             customer={selectedCustomer}
+            options={options}
             onChange={handleFieldChange}
             onClose={() => setIsEditPanelOpen(false)}
             onSave={handleSaveChanges}
