@@ -4,16 +4,21 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import os
 import torch
+import sys
+
+# 명령줄 인수 처리
+if len(sys.argv) > 1:
+    csv_path = sys.argv[1]
+else:
+    # 기본 CSV 경로 설정 (명령줄 인수가 없을 경우)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(current_dir, "더미_고객_데이터_테스트셋.csv")
 
 # CPU 모드로 강제 설정
 torch.set_num_threads(4)
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
-# 현재 스크립트의 디렉토리 경로를 가져옵니다
-current_dir = os.path.dirname(os.path.abspath(__file__))
-csv_path = os.path.join(current_dir, "더미_고객_데이터_테스트셋.csv")
-
-# 더미 데이터 CSV 불러오기
+# CSV 불러오기
 df = pd.read_csv(csv_path)
 input_columns = df.columns.tolist()
 

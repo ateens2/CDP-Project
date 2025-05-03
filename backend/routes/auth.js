@@ -150,13 +150,13 @@ router.post('/google/updateSheet', async (req, res) => {
 // 6. 현재 로그인한 사용자 정보 반환 (/auth/me)
 //    세션 기반이며, DB에서 사용자 정보를 조회한 후, 세션에 저장된 accessToken을 추가하여 반환
 router.get('/me', async (req, res) => {
-  console.log("Session info:", req.session);
-  console.log("User info from session:", req.user);
+  console.log("GET /auth/me 요청 도착"); // 요청 도착 로그
   if (req.isAuthenticated()) {
     const userEmail = req.user.email;
     let connection;
     try {
       connection = await mysql.createConnection(mysqlConfig);
+      console.log("MySQL 연결 성공"); // MySQL 연결 성공 로그
       const [rows] = await connection.execute(
         "SELECT email, name, phone, sheet_file FROM customer WHERE LOWER(email) = LOWER(?)",
         [userEmail]
@@ -198,3 +198,5 @@ router.get('/logout', (req, res, next) => {
 });
 
 module.exports = router;
+
+// End of auth routes

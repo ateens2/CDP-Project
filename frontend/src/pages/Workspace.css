@@ -205,3 +205,236 @@
   resize: none;
   z-index: 5;
 }
+
+.workspace-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f9f9f9;
+}
+
+.workspace-content {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.workspace-title {
+  margin-bottom: 2rem;
+  color: #333;
+  font-size: 2rem;
+}
+
+.workspace-section {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+}
+
+.section-title {
+  margin-top: 0;
+  font-size: 1.25rem;
+  color: #333;
+  margin-bottom: 1.5rem;
+}
+
+/* 연결된 스프레드시트 섹션 */
+.sheet-selection-area {
+  margin-top: 1rem;
+}
+
+.existing-sheet-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.existing-sheet-info {
+  margin-bottom: 1.5rem;
+}
+
+.existing-sheet-item {
+  display: flex;
+  align-items: center;
+  padding: 1.25rem;
+  border-radius: 8px;
+  background-color: #f0f7ff;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.sheet-icon {
+  font-size: 2rem;
+  margin-right: 1.5rem;
+}
+
+.sheet-details {
+  flex: 1;
+}
+
+.sheet-name {
+  font-weight: 500;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.sheet-id {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.sheet-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.sheet-action-btn {
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.sheet-action-btn:hover {
+  background-color: #3367d6;
+}
+
+.change-sheet-btn {
+  background-color: #f8f9fa;
+  color: #4285f4;
+  border: 1px solid #4285f4;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  align-self: flex-start;
+}
+
+.change-sheet-btn:hover {
+  background-color: #e8f0fe;
+}
+
+.no-sheet-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.no-sheet-wrapper p {
+  margin-bottom: 1.5rem;
+  color: #666;
+}
+
+.select-sheet-btn {
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.select-sheet-btn:hover {
+  background-color: #3367d6;
+}
+
+/* 필드 매핑 섹션 */
+.field-mapping-section {
+  margin-top: 1rem;
+}
+
+/* 도움말 섹션 */
+.help-section {
+  padding: 0;
+  overflow: hidden;
+}
+
+.help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.help-header:hover {
+  background-color: #f5f5f5;
+}
+
+.toggle-icon {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.help-content {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+  border-top: 1px solid #eee;
+}
+
+.help-item {
+  margin-top: 1.5rem;
+}
+
+.help-item h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: #333;
+}
+
+.help-item p {
+  margin: 0;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* 모달 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* 미인증 상태 */
+.workspace-unauthorized {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #f9f9f9;
+}
+
+.workspace-unauthorized h2 {
+  margin-top: 2rem;
+  color: #d32f2f;
+}

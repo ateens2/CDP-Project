@@ -4,13 +4,15 @@ import { UserContext } from "../contexts/UserContext";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import DriveSheetSelector from "../components/DriveSheetSelector";
+import FieldMappingTool from "../components/FieldMappingTool";
 import "./Workspace.css";
 
 const Workspace = () => {
   const { user, sheets, setSheets } = useContext(UserContext);
   const [selectedSheet, setSelectedSheet] = useState(null);
   const [showDriveSelector, setShowDriveSelector] = useState(false);
-  const [showHelp, setShowHelp] = useState(false); // ← 도움말 토글 상태
+  const [showHelp, setShowHelp] = useState(false);
+  const [showFieldMapping, setShowFieldMapping] = useState(false);
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const navigate = useNavigate();
 
@@ -73,6 +75,11 @@ const Workspace = () => {
     navigate("/customer-management", { state: { sheet } });
   };
 
+  const handleFieldMappingComplete = (result) => {
+    console.log("Field mapping completed:", result);
+    // 필요한 경우 여기서 추가 처리
+  };
+
   if (!user) {
     return (
       <div className="workspace-unauthorized">
@@ -83,71 +90,110 @@ const Workspace = () => {
   }
 
   return (
-    <div className="workspace">
+    <div className="workspace-container">
       <Header />
-      <main className="main">
-        <div
-          className={`box sheet-box ${showDriveSelector ? "slide-left" : ""}`}
-        >
-          <h2 className="box-title">sheets log</h2>
+      <main className="workspace-content">
+        <h1 className="workspace-title">워크스페이스</h1>
 
-          {/* 도움말 아이콘 */}
-          <i
-            className="fa-regular fa-circle-question sheet-help-icon"
-            title="사용설명 보기"
-            onClick={() => setShowHelp((v) => !v)}
-          />
-
-          {/* 토글용 읽기 전용 textarea */}
-          {showHelp && (
-            <textarea
-              className="help-textarea"
-              readOnly
-              value={`
-1. 시트 로그 하단의 ‘Add Sheet’ 버튼을 누르면 구글 드라이브를 통해 모든 구글 시트가 나옵니다.\n
-2. 구글 시트 목록에서 관리하는 고객 시트를 등록해주세요\n
-3. 구글 시트가 등록이 완료되고 버튼 클릭 시 ai를 통해 파편화 정리가 진행됩니다. \n\n *파편화가 정리된 시트로 새로 생성되는 것이니 기존의 시트는 그대로 있습니다.\n
-4. ‘Update’ 버튼으로 다른 시트로도 변경 가능합니다.\n
-5. 시트 항목을 클릭하면 고객 관리 화면으로 이동합니다.`}
-            />
-          )}
-
-          <div className="sheet-list">
-            {sheets.length === 0 ? (
-              <p>No sheets yet.</p>
-            ) : (
-              sheets.map((sheet, index) => (
-                <div
-                  key={index}
-                  className="sheet-item"
-                  title="시트 관리로 이동하기"
-                  onClick={() => handleExistingSheetClick(sheet)}
-                >
-                  {sheet.name}
+        {/* 연결된 스프레드시트 표시 */}
+        <section className="workspace-section">
+          <h2 className="section-title">연결된 스프레드시트</h2>
+          <div className="sheet-selection-area">
+            {sheets.length > 0 ? (
+              <div className="existing-sheet-wrapper">
+                <div className="existing-sheet-info">
+                  {sheets.map((sheet, index) => (
+                    <div key={index} className="existing-sheet-item">
+                      <div className="sheet-icon">📊</div>
+                      <div className="sheet-details">
+                        <div className="sheet-name">{sheet.name}</div>
+                        <div className="sheet-id">ID: {sheet.sheetId}</div>
+                      </div>
+                      <div className="sheet-actions">
+                        <button className="sheet-action-btn" onClick={() => handleExistingSheetClick(sheet)}>
+                          <span>고객 관리</span>
+                        </button>
+                        <button className="sheet-action-btn" onClick={() => setShowFieldMapping(!showFieldMapping)}>
+                          <span>{showFieldMapping ? "필드 매핑 닫기" : "AI 필드 매핑"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))
+                <button
+                  className="change-sheet-btn"
+                  onClick={() => setShowDriveSelector(true)}
+                >
+                  다른 스프레드시트 선택
+                </button>
+              </div>
+            ) : (
+              <div className="no-sheet-wrapper">
+                <p>연결된 스프레드시트가 없습니다.</p>
+                <button
+                  className="select-sheet-btn"
+                  onClick={() => setShowDriveSelector(true)}
+                >
+                  Google Drive에서 스프레드시트 선택
+                </button>
+              </div>
             )}
           </div>
-        </div>
+        </section>
+
+        {/* 필드 매핑 도구 */}
+        {showFieldMapping && selectedSheet && (
+          <section className="workspace-section field-mapping-section">
+            <FieldMappingTool 
+              sheet={selectedSheet}
+              onMapComplete={handleFieldMappingComplete}
+            />
+          </section>
+        )}
+
+        {/* 도움말 섹션 */}
+        <section className="workspace-section help-section">
+          <div className="help-header" onClick={() => setShowHelp(!showHelp)}>
+            <h2 className="section-title">도움말 및 사용법</h2>
+            <span className="toggle-icon">{showHelp ? "▲" : "▼"}</span>
+          </div>
+          {showHelp && (
+            <div className="help-content">
+              <div className="help-item">
+                <h3>스프레드시트 연결하기</h3>
+                <p>
+                  "Google Drive에서 스프레드시트 선택" 버튼을 클릭하여 기존
+                  고객 데이터가 있는 스프레드시트를 선택하세요.
+                </p>
+              </div>
+              <div className="help-item">
+                <h3>AI 필드 매핑</h3>
+                <p>
+                  스프레드시트의 열 이름이 표준 형식과 다른 경우, AI 필드 매핑 기능을
+                  사용하면 자동으로 열 이름을 감지하고 표준 필드로 매핑합니다.
+                </p>
+              </div>
+              <div className="help-item">
+                <h3>고객 관리</h3>
+                <p>
+                  고객 관리 버튼을 클릭하면 연결된 스프레드시트의 고객 정보를
+                  조회, 관리할 수 있는 대시보드로 이동합니다.
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
       </main>
 
-      <div
-        className={`add-button-container ${showDriveSelector ? "moved" : ""}`}
-      >
-        <button
-          className="upload-button"
-          onClick={() => setShowDriveSelector(true)}
-        >
-          {sheets.length > 0 ? "Update" : "+ Add Sheet"}
-        </button>
-      </div>
-
+      {/* 드라이브 시트 선택기 모달 */}
       {showDriveSelector && (
-        <div className="drive-sheet-selector-container open">
-          <DriveSheetSelector
-            onSelect={handleDriveSheetSelect}
-            onCancel={() => setShowDriveSelector(false)}
-          />
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <DriveSheetSelector
+              onSelect={handleDriveSheetSelect}
+              onCancel={() => setShowDriveSelector(false)}
+            />
+          </div>
         </div>
       )}
     </div>
