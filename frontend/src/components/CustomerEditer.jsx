@@ -3,14 +3,23 @@ import React, { useState, useEffect, useRef } from "react";
 import "./CustomerEditer.css";
 
 const overviewFields = [
-  "고객명",
-  "이메일 주소",
-  "휴대폰번호",
-  "가입 날짜",
-  "배송지 주소",
+  "name",
+  "email",
+  "contact",
+  "signup_date",
+  "shipping_address",
 ];
-const orderTextFields = ["주문번호", "주문일자", "총 결제금액", "제품 코드"];
-const inquiryTextFields = ["문의번호", "문의일자", "처리일자"];
+const orderTextFields = [
+  "order_id",
+  "order_date",
+  "total_price",
+  "product_id",
+  "product_name",
+  "product_category",
+  "product_price",
+  "quantity",
+];
+const inquiryTextFields = ["inquiry_id", "inquiry_create", "inquiry_finish"];
 
 const CustomerEditer = ({
   customer,
@@ -82,13 +91,13 @@ const CustomerEditer = ({
       {/* Header */}
       <div className="customer-editer-header">
         <div className="customer-avatar">
-          {(customer["고객명"] || "").charAt(0).toUpperCase()}
+          {(customer["name"] || "").charAt(0).toUpperCase()}
         </div>
         <div className="customer-basic-info">
-          <h2 className="customer-name">{customer["고객명"] || "이름 없음"}</h2>
+          <h2 className="customer-name">{customer["name"] || "이름 없음"}</h2>
           <div className="customer-contact">
-            <span>{customer["휴대폰번호"]}</span> |{" "}
-            <span>{customer["이메일 주소"]}</span>
+            <span>{customer["contact"]}</span> |{" "}
+            <span>{customer["email"]}</span>
           </div>
         </div>
       </div>
@@ -129,10 +138,10 @@ const CustomerEditer = ({
             <h3>주문상태</h3>
             {orderTextFields.map((f) => renderTextField(f))}
             <div className="field">
-              <label>결제 상태:</label>
+              <label>order_status:</label>
               <select
-                value={customer["결제 상태"] || ""}
-                onChange={(e) => onChange("결제 상태", e.target.value)}
+                value={customer["order_status"] || ""}
+                onChange={(e) => onChange("order_status", e.target.value)}
               >
                 <option value="">--선택--</option>
                 {paymentStatuses.map((s) => (
@@ -143,10 +152,10 @@ const CustomerEditer = ({
               </select>
             </div>
             <div className="field">
-              <label>결제 수단:</label>
+              <label>payment_method:</label>
               <select
-                value={customer["결제 수단"] || ""}
-                onChange={(e) => onChange("결제 수단", e.target.value)}
+                value={customer["payment_method"] || ""}
+                onChange={(e) => onChange("payment_method", e.target.value)}
               >
                 <option value="">--선택--</option>
                 {paymentMethods.map((m) => (
@@ -164,10 +173,10 @@ const CustomerEditer = ({
             <h3>문의내용</h3>
             {inquiryTextFields.map((f) => renderTextField(f))}
             <div className="field">
-              <label>이슈 유형:</label>
+              <label>inquiry_type:</label>
               <select
-                value={customer["이슈 유형"] || ""}
-                onChange={(e) => onChange("이슈 유형", e.target.value)}
+                value={customer["inquiry_type"] || ""}
+                onChange={(e) => onChange("inquiry_type", e.target.value)}
               >
                 <option value="">--선택--</option>
                 {issueTypes.map((t) => (
@@ -178,10 +187,10 @@ const CustomerEditer = ({
               </select>
             </div>
             <div className="field">
-              <label>진행상태:</label>
+              <label>inquiry_status:</label>
               <select
-                value={customer["진행상태"] || ""}
-                onChange={(e) => onChange("진행상태", e.target.value)}
+                value={customer["inquiry_status"] || ""}
+                onChange={(e) => onChange("inquiry_status", e.target.value)}
               >
                 <option value="">--선택--</option>
                 {progressStatuses.map((p) => (
@@ -191,30 +200,30 @@ const CustomerEditer = ({
                 ))}
               </select>
             </div>
-            <div className="field" key="문의 상세 내용">
-              <label>문의 상세 내용:</label>
+            <div className="field" key="inquiry_details">
+              <label>inquiry_details:</label>
               <div className="field-with-icon">
                 <textarea
-                  value={customer["문의 상세 내용"] || ""}
+                  value={customer["inquiry_details"] || ""}
                   readOnly={
                     customer.__rowNum__ != null
-                      ? !editMode["문의 상세 내용"]
+                      ? !editMode["inquiry_details"]
                       : false
                   }
-                  ref={(el) => (inputRefs.current["문의 상세 내용"] = el)}
-                  onChange={(e) => onChange("문의 상세 내용", e.target.value)}
+                  ref={(el) => (inputRefs.current["inquiry_details"] = el)}
+                  onChange={(e) => onChange("inquiry_details", e.target.value)}
                   onBlur={() => {
                     if (customer.__rowNum__ != null) {
                       setEditMode((prev) => ({
                         ...prev,
-                        ["문의 상세 내용"]: false,
+                        ["inquiry_details"]: false,
                       }));
                     }
                   }}
                 />
                 <i
                   className="fa-solid fa-pen-to-square edit-icon"
-                  onClick={() => toggleEdit("문의 상세 내용")}
+                  onClick={() => toggleEdit("inquiry_details")}
                 />
               </div>
             </div>

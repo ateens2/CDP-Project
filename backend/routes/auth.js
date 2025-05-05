@@ -145,20 +145,29 @@ router.post('/google/updateSheet', async (req, res) => {
   }
 });
 
-// 6. 현재 로그인한 사용자 정보 반환 (/auth/me)  
-//    세션 기반으로, DB에서 사용자를 조회하고, 세션에 저장된 accessToken을 추가하여 반환합니다.
 // 6. 현재 로그인한 사용자 정보 반환 (/auth/me)
 //    세션 기반이며, DB에서 사용자 정보를 조회한 후, 세션에 저장된 accessToken을 추가하여 반환
 router.get('/me', async (req, res) => {
-  console.log("GET /auth/me 요청 도착"); // 요청 도착 로그
+  console.log("GET /auth/me 요청 도착");
+  console.log("User info from session:", req.user);
   if (req.isAuthenticated()) {
     const userEmail = req.user.email;
     let connection;
     try {
       connection = await mysql.createConnection(mysqlConfig);
-      console.log("MySQL 연결 성공"); // MySQL 연결 성공 로그
+      console.log("MySQL 연결 성공");
       const [rows] = await connection.execute(
-        "SELECT email, name, phone, sheet_file FROM customer WHERE LOWER(email) = LOWER(?)",
+        `SELECT
+           email,
+           name,
+           phone,
+           sheet_file,
+           created_,
+           level,
+           experience,
+           experience_to_next_level as experienceToNextLevel
+         FROM customer
+         WHERE LOWER(email) = LOWER(?)`,
         [userEmail]
       );
       await connection.end();
@@ -168,8 +177,12 @@ router.get('/me', async (req, res) => {
         dbUser.accessToken = req.user.accessToken;
         res.json({ user: dbUser });
       } else {
-        // 회원이 DB에 존재하지 않는 경우, googleEmail 값을 포함하여 전달
-        res.status(404).json({ user: null, googleEmail: req.user.email, message: "User not found" });
+        // DB에 레코드가 없을 때
+        res.status(404).json({
+          user: null,
+          googleEmail: req.user.email,
+          message: "User not found"
+        });
       }
     } catch (err) {
       if (connection) await connection.end();
@@ -198,5 +211,47 @@ router.get('/logout', (req, res, next) => {
 });
 
 module.exports = router;
+
+// 유저 정보 업데이트 (/auth/updateUser)
+router.patch('/updateUser', async (req, res) => {
+  if (!req.isAuthenticated()) 
+    return res.status(401).json({ message: 'Unauthorized' });
+
+  const updates = req.body;        // { name?: "...", phone?: "...", sheet_file?: "..." }
+  const userEmail = req.user.email;
+
+  // 수정할 필드가 없으면 에러
+  const fields = Object.keys(updates);
+  if (fields.length === 0) 
+    return res.status(400).json({ message: '변경할 필드가 없습니다.' });
+
+  // 동적으로 SET 절 생성
+  const setClauses = [];
+  const params = [];
+  fields.forEach((key) => {
+    setClauses.push(`${key} = ?`);
+    params.push(updates[key]);
+  });
+  params.push(userEmail);
+
+  const sql = `
+    UPDATE customer
+       SET ${setClauses.join(', ')}
+     WHERE LOWER(email) = LOWER(?)
+  `;
+
+  let conn;
+  try {
+    conn = await mysql.createConnection(mysqlConfig);
+    const [result] = await conn.execute(sql, params);
+    await conn.end();
+    res.json({ message: '사용자 정보 수정완료', affectedRows: result.affectedRows });
+  } catch (err) {
+    if (conn) await conn.end();
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 
 // End of auth routes

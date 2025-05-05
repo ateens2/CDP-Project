@@ -42,7 +42,7 @@ const FieldMappingTool = ({ sheet, onMapComplete }) => {
 
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`${backendUrl}/api/sheets/map-fields`, {
         method: "POST",
@@ -56,13 +56,16 @@ const FieldMappingTool = ({ sheet, onMapComplete }) => {
         }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
+        // data.message 에 구글 API 에러 메시지가 담겨 있음
+        throw new Error(
+          data.message || `Error mapping fields (${response.status})`
+        );
       }
-
-      const result = await response.json();
+      const result = data;
       setMappingResult(result);
-      
+
       if (onMapComplete) {
         onMapComplete(result);
       }
@@ -108,12 +111,16 @@ const FieldMappingTool = ({ sheet, onMapComplete }) => {
     <div className="field-mapping-tool">
       <h2>AI 필드 매핑 도구</h2>
       <p className="description">
-        이 도구는 스프레드시트의 열 이름을 분석하여 표준 필드로 매핑합니다.
-        매핑 후에는 새로운 시트가 생성됩니다.
+        이 도구는 스프레드시트의 열 이름을 분석하여 표준 필드로 매핑합니다. 매핑
+        후에는 새로운 시트가 생성됩니다.
       </p>
 
       {!headersFetched && !loading && (
-        <button className="fetch-headers-btn" onClick={fetchHeaders} disabled={loading}>
+        <button
+          className="fetch-headers-btn"
+          onClick={fetchHeaders}
+          disabled={loading}
+        >
           스프레드시트 열 정보 가져오기
         </button>
       )}
@@ -148,7 +155,7 @@ const FieldMappingTool = ({ sheet, onMapComplete }) => {
       {error && <div className="error-message">오류: {error}</div>}
 
       {renderMappingResults()}
-      
+
       {mappingResult && (
         <div className="post-mapping-actions">
           <p>새 시트 '{mappingResult.newSheetName}'가 생성되었습니다.</p>
@@ -159,4 +166,4 @@ const FieldMappingTool = ({ sheet, onMapComplete }) => {
   );
 };
 
-export default FieldMappingTool; 
+export default FieldMappingTool;

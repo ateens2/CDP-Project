@@ -35,16 +35,16 @@ const CustomerManagement = () => {
 
   // --- 라디오칩 옵션 생성 (시트에서 추출된 고유 값) ---
   const paymentStatuses = Array.from(
-    new Set(customers.map((c) => c["결제 상태"]).filter((v) => v))
+    new Set(customers.map((c) => c["order_status"]).filter((v) => v))
   );
   const paymentMethods = Array.from(
-    new Set(customers.map((c) => c["결제 수단"]).filter((v) => v))
+    new Set(customers.map((c) => c["payment_method"]).filter((v) => v))
   );
   const issueTypes = Array.from(
-    new Set(customers.map((c) => c["이슈 유형"]).filter((v) => v))
+    new Set(customers.map((c) => c["inquiry_type"]).filter((v) => v))
   );
   const progressStatuses = Array.from(
-    new Set(customers.map((c) => c["진행상태"]).filter((v) => v))
+    new Set(customers.map((c) => c["inquiry_status"]).filter((v) => v))
   );
   const options = {
     paymentStatuses,
@@ -60,8 +60,14 @@ const CustomerManagement = () => {
     const meta = await window.gapi.client.sheets.spreadsheets.get({
       spreadsheetId: sheet.sheetId,
     });
-    const name = meta.result.sheets[0].properties.title;
-    const sheetId = meta.result.sheets[0].properties.sheetId;
+    const sheetsMeta = meta.result.sheets;
+    const mapped = sheetsMeta.find((s) => s.properties.title === "Mapped_Data");
+    const name = mapped
+      ? mapped.properties.title
+      : sheetsMeta[0].properties.title;
+    const sheetId = mapped
+      ? mapped.properties.sheetId
+      : sheetsMeta[0].properties.sheetId;
     setSheetName(name);
     setActiveSheetId(sheetId);
 
@@ -124,8 +130,9 @@ const CustomerManagement = () => {
   const handleSaveChanges = async () => {
     if (!sheet || !window.gapi?.client) return;
     await window.gapi.client.load("sheets", "v4");
+
     if (selectedCustomer.__rowNum__ == null) {
-      // 추가
+      // 신규 추가 기존 로직 그대로...
       const values = sheetHeaders.map((h) => selectedCustomer[h] ?? "");
       await window.gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId: sheet.sheetId,
@@ -138,24 +145,26 @@ const CustomerManagement = () => {
       window.location.reload();
       return;
     } else {
-      // 수정
       const rowNum = selectedCustomer.__rowNum__;
-      const key = lastChangedKey;
-      if (rowNum && key) {
-        const col = headerMap[key].letter;
-        const range = `'${sheetName}'!${col}${rowNum}`;
-        await window.gapi.client.sheets.spreadsheets.values.update({
-          spreadsheetId: sheet.sheetId,
-          range,
-          valueInputOption: "RAW",
-          resource: { values: [[selectedCustomer[key]]] },
-        });
-        setCustomers((prev) =>
-          prev.map((c) => (c.__rowNum__ === rowNum ? selectedCustomer : c))
-        );
-        alert("고객 정보가 업데이트 되었습니다.");
-      }
+      const rowValues = sheetHeaders.map((h) => selectedCustomer[h] ?? "");
+      const lastColLetter = String.fromCharCode(65 + sheetHeaders.length - 1);
+      const range = `'${sheetName}'!A${rowNum}:${lastColLetter}${rowNum}`;
+
+      await window.gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId: sheet.sheetId,
+        range,
+        valueInputOption: "RAW",
+        resource: { values: [rowValues] },
+      });
+
+      // 로컬 state도 전체 객체로 교체
+      setCustomers((prev) =>
+        prev.map((c) => (c.__rowNum__ === rowNum ? { ...selectedCustomer } : c))
+      );
+      alert("고객 정보가 업데이트 되었습니다.");
     }
+
+    // 공통 정리
     setLastChangedKey(null);
     setIsEditPanelOpen(false);
   };
@@ -194,7 +203,7 @@ const CustomerManagement = () => {
   const totalPages = Math.ceil(customers.length / itemsPerPage);
   const filteredList = pageRows.filter((c) => {
     const q = search.toLowerCase();
-    return ["고객명", "이메일 주소", "연락처", "결제 상태"].some((f) =>
+    return ["name", "email", "contact", "order_status"].some((f) =>
       c[f]?.toLowerCase().includes(q)
     );
   });

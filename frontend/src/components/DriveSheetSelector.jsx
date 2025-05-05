@@ -1,5 +1,6 @@
 // src/components/DriveSheetSelector.jsx
 import React, { useEffect, useState } from "react";
+import "./DriveSheetSelector.css";
 
 const DriveSheetSelector = ({ onSelect, onCancel }) => {
   const [driveSheets, setDriveSheets] = useState([]);
@@ -12,7 +13,7 @@ const DriveSheetSelector = ({ onSelect, onCancel }) => {
         setLoading(false);
         return;
       }
-      
+
       const tokenObj = window.gapi.client.getToken();
       if (!tokenObj || !tokenObj.access_token) {
         console.error("No access token available in gapi client.");
@@ -40,16 +41,24 @@ const DriveSheetSelector = ({ onSelect, onCancel }) => {
   if (loading) return <div>Loading spreadsheets...</div>;
 
   return (
-    <div className="drive-sheet-selector">
-      <h3>Select a Spreadsheet from Google Drive</h3>
-      <ul>
-        {driveSheets.map((sheet) => (
-          <li key={sheet.id}>
-            <button onClick={() => onSelect(sheet)}>{sheet.name}</button>
-          </li>
-        ))}
-      </ul>
-      <button onClick={onCancel}>Cancel</button>
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <h3>Select a Spreadsheet from Google Drive</h3>
+        <ul>
+          {driveSheets.map((sheet) => (
+            <li key={sheet.id} className={`sheet-item`}>
+              <button onClick={() => onSelect(sheet)}>{sheet.name}</button>
+              <span className="sheet-item-icon">📄</span>
+              <div className="sheet-item-info">
+                <span className="sheet-item-meta">{sheet.ownerEmail}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <button className="cancel-button" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
     </div>
   );
 };

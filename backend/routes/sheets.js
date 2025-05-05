@@ -190,7 +190,14 @@ router.post('/map-fields', async (req, res) => {
     })
     .catch(err => {
       console.error('Error in field mapping process:', err);
-      res.status(500).json({ message: err.message });
+      // Google API 에러 메시지가 errors 배열에 들어있으면 그것을, 아니면 err.message
+      const apiError =
+        err.errors && err.errors[0] && err.errors[0].message
+          ? err.errors[0].message
+          : err.message;
+      // Google API 에러 코드(err.code)에 맞춰 상태코드 지정 (없으면 500)
+      const statusCode = err.code && Number.isInteger(err.code) ? err.code : 500;
+      res.status(statusCode).json({ message: apiError });
     });
   } catch (error) {
     console.error('Error mapping fields:', error);

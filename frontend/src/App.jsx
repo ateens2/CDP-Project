@@ -15,6 +15,7 @@ import SheetEditor from "./components/SheetEditor";
 import InitialPage from "./pages/InitialPage";
 import CustomerManagement from "./pages/CustomerManagement";
 import DataAnalytics from "./pages/DataAnalytics";
+import UserDetailPage from "./pages/UserDetailPage";
 
 function App() {
   const { gapiLoaded } = useGoogleAuth();
@@ -39,6 +40,7 @@ function App() {
           <Route path="/sheet-editor" element={<SheetEditor />} />
           <Route path="/customer-management" element={<CustomerManagement />} />
           <Route path="/data-analytics" element={<DataAnalytics />} />
+          <Route path="/profile" element={<UserDetailPage />} />
           <Route path="/" element={user ? <Workspace /> : <InitialPage />} />
         </Routes>
       </UserProvider>
