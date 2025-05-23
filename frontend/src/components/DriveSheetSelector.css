@@ -1,0 +1,173 @@
+/* DriveSheetSelector.css */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  /* Modal container */
+  .modal-content {
+    display: flex;
+    flex-direction: column;
+    /* 기존 스타일 유지 */
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    max-width: 90%;
+    max-height: 90%;
+    overflow-y: auto;
+  }
+  .cancel-button {
+    align-self: flex-end;
+    margin-top: 1rem;
+    width: 120px;
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+    border: none;
+    border-radius: 999px;
+    background-color: #f0f0f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .cancel-button:hover {
+    background-color: #e0e0e0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  
+  /* Modal header */
+  .modal-content h3 {
+    margin: 0 0 16px;
+    font-size: 1.5rem;
+    color: #333;
+  }
+  
+  /* Spreadsheet list container */
+  .drive-sheet-selector ul {
+    list-style: none;
+    margin: 0 0 24px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  /* Spreadsheet item wrapper */
+  .sheet-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background: #fafafa;
+    transition: background 0.2s, transform 0.1s;
+  }
+  
+  /* Button reset & text styling */
+  .sheet-item button {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    flex: 1;
+    color: #333;
+    font-size: 1rem;
+  }
+  
+  /* Hover effect on item */
+  .sheet-item:hover {
+    background: #f0f0f0;
+    transform: translateY(-1px);
+  }
+  
+  /* Selected state */
+  .sheet-item.selected {
+    background: #e3f2fd;
+    border-color: #90caf9;
+  }
+  
+  /* Icon next to sheet name */
+  .sheet-item-icon {
+    flex-shrink: 0;
+    margin-left: 12px;
+    font-size: 1.25rem;
+    color: #1976d2;
+  }
+  
+  /* Meta info text */
+  .sheet-item-info {
+    margin-left: 12px;
+    font-size: 0.85rem;
+    color: #777;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  /* Footer action buttons container */
+  .modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+  
+  /* Footer buttons */
+  .modal-buttons button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  
+  .modal-buttons button.select {
+    background-color: #1976d2;
+    color: #fff;
+  }
+  
+  .modal-buttons button.select:hover {
+    background-color: #155fa0;
+  }
+  
+  .modal-buttons button.cancel {
+    background-color: #e0e0e0;
+    color: #333;
+  }
+  
+  .modal-buttons button.cancel:hover {
+    background-color: #c6c6c6;
+  }
+  
+  /* Standalone Cancel button at bottom */
+  .drive-sheet-selector > button {
+    align-self: flex-end;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: #e0e0e0;
+    color: #333;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 16px;
+  }
+  
+  .drive-sheet-selector > button:hover {
+    background-color: #c6c6c6;
+  }
+  

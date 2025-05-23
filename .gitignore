@@ -1,0 +1,56 @@
+# Ignore everything
+*
+!.gitignore
+!README.md
+
+# Allow frontend directory
+!frontend/
+!frontend/**
+
+# Allow backend directory
+!backend/
+!backend/**
+
+# Allow ai directory
+!ai/
+!ai/**
+
+# But still ignore node_modules and other unnecessary files
+**/node_modules/
+**/.DS_Store
+**/*.log
+**/.env
+**/.idea/
+**/.vscode/
+**/dist/
+**/build/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+
+# Dependency directories
+node_modules/
+
+# Environment variables
+.env
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS specific
+.DS_Store
+
+# Task files
+tasks.json
+tasks/ localhost.har

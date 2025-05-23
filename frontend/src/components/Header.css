@@ -1,0 +1,75 @@
+.Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 40px;
+  border-bottom: 1px solid #c8e6c9;
+  background-color: #e8f5e9;
+}
+.header-left {
+  font-size: 24px;
+  font-weight: bold;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.header-title {
+  flex: 1;
+  text-align: center;
+  font-size: 24px;
+}
+.header-right {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.user-name {
+  margin-right: 0.5rem;
+  font-size: 14px;
+  color: #555;
+}
+.user-icon {
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: #555;
+  transition: color 0.2s;
+}
+.user-icon:hover {
+  color: #333;
+}
+.user-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+}
+.user-menu button {
+  background: none;
+  border: none;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  transition: background 0.2s;
+}
+.user-menu button:hover {
+  background: #f3f4f6;
+}
+.login-button {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: #555;
+}
+.login-button:hover {
+  color: #333;
+}

@@ -1,0 +1,208 @@
+
+/* UserDetailPage.css */
+
+/* ─── 컨테이너 ─── */
+.header-note {
+  background-color: #def7ec;
+  border-left: 4px solid #10b981;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  color: #065f46;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-weight: 500;
+}
+.user-detail-container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+}
+.user-detail-item .value input[disabled] {
+  /* 컨테이너(.value) 패딩 제거 */
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  /* 텍스트 스타일은 컨테이너 상속 */
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  /* 너비는 100%로 채우되, 박스 모델 혼란 방지 */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ─── “기본 정보” 헤더 ─── */
+.user-detail-header {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.user-detail-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* ─── 항목들 2열 그리드 배치 ─── */
+.user-detail-content {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 2rem;
+  row-gap: 1.5rem;
+}
+
+/* ─── 각 폼 그룹 (라벨 + 값 영역) ─── */
+.user-detail-item {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 라벨 */
+.user-detail-item .label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+/* 값 + 아이콘 영역: 가로 정렬 */
+.user-detail-item .value-with-icon,
+.user-detail-item .value {
+  display: flex;
+  align-items: center;
+}
+
+/* 수정 가능한 input */
+.user-detail-item .value-with-icon input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #111827;
+}
+
+/* 수정 불가 또는 단순 텍스트 부분을 input처럼 보이게 */
+.user-detail-item .value {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+/* 편집 아이콘 */
+.user-detail-item .edit-icon {
+  margin-left: 0.5rem;
+  color: #888;
+  cursor: pointer;
+}
+.user-detail-item .edit-icon:hover {
+  color: #555;
+}
+.user-detail-item .hint {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+
+
+.value-with-icon input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+}
+
+.value-with-icon .edit-icon {
+  margin-left: 0.5rem;
+  cursor: pointer;
+  color: #888;
+  transition: color 0.2s;
+}
+
+.value-with-icon .edit-icon:hover {
+  color: #555;
+}
+
+.loading, .error {
+  text-align: center;
+  margin-top: 2rem;
+  color: #6b7280;
+}
+
+.user-detail-actions {
+  text-align: right;
+  margin-top: 1rem;
+}
+
+.save-button {
+  padding: 0.5rem 1rem;
+  background-color: #388e3c;
+  color: #ffffff;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.save-button:hover {
+  background-color: #33691e;
+}
+.user-overview {
+  padding: 1.5rem 2rem;
+  background-color: #f1f5f9;
+  font-weight: 600;
+  border-bottom: 1px solid #e5e7eb;
+}
+.overview-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.overview-label {
+  flex: 0 0 80px;
+  font-weight: 600;
+  color: #4b5563;
+}
+.overview-value {
+  flex: 1;
+  color: #1f2937;
+}
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.xp-bar-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.xp-bar-bg {
+  flex: 1;
+  height: 8px;
+  background-color: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-right: 0.75rem;
+}
+.xp-bar-fill {
+  height: 100%;
+  background-color: #10b981;
+  width: 0;
+  transition: width 1s ease-in-out; 
+}
+.xp-text {
+  font-size: 0.75rem;
+  color: #6b7280;
+}

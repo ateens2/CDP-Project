@@ -1,0 +1,86 @@
+/* src/styles/Category.css */
+
+/* 사이드바 전체 컨테이너 */
+.sidebar {
+  width: 16rem; /* 256px */
+  background-color: #e8f5e9; /* 연한 녹색 */
+  color: #1f2937; /* 어두운 그레이 (텍스트 대비) */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* 로고 영역 */
+.logo {
+  padding: 1rem;
+  border-bottom: 1px solid #c8e6c9; /* 연한 녹색 계열의 테두리 */
+}
+.logo-text {
+  font-size: 1.125rem;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+/* 메뉴 영역 */
+nav {
+  flex: 1;
+}
+.menu-header {
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: #2e7d32; /* 다크 그린 계열 */
+}
+
+/* .sidebar-item : a 태그와 button 모두에 동일하게 적용 */
+.sidebar-item {
+  display: block;
+  padding: 1rem 1.5rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.3s;
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+}
+
+.sidebar-item:hover {
+  background-color: #c8e6c9; /* 호버 시 조금 더 진한 연한 녹색 */
+}
+
+.sidebar-item.active {
+  background-color: #a5d6a7; /* 활성화된 메뉴는 약간 더 어두운 녹색 */
+}
+
+/* 하단 프로필 영역 */
+.profile {
+  padding: 1rem;
+  border-top: 1px solid #c8e6c9;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background-color: #66bb6a; /* 중간 녹색 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+}
+.profile-info {
+  display: flex;
+  flex-direction: column;
+}
+.profile-name {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #1f2937;
+}
+.profile-role {
+  font-size: 0.875rem;
+  color: #2e7d32;
+}

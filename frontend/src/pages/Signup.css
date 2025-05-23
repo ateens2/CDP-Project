@@ -1,0 +1,109 @@
+/* 전체 컨테이너 (연한 초록 테마) */
+.signup-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    font-family: sans-serif;
+    background-color: #e8f5e9; /* 연한 초록색 배경 */
+  }
+  
+  /* 헤더 스타일 */
+  .signup-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 40px;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .signup-logo {
+    font-size: 24px;
+    font-weight: bold;
+    background-color: #e8f5e9;
+    border: none;
+  }
+  
+  /* 메인 스타일 */
+  .signup-main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+  }
+  
+  /* 회원가입 박스 */
+  .signup-box {
+    width: 400px;
+    max-width: 90%;
+    padding: 40px;
+    background-color: #fff;
+    border: 1px solid #c8e6c9; /* 연한 초록 테두리 */
+    border-radius: 8px;
+    text-align: center;
+  }
+  
+  .signup-box h2 {
+    margin-bottom: 30px;
+    font-size: 24px;
+    color: #388e3c; /* 진한 초록 */
+  }
+  
+  /* 폼 스타일 */
+  .signup-box form {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+  }
+  
+  .signup-box label {
+    font-weight: 600;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    color: #333;
+  }
+  
+  .signup-box input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  /* 이메일 에러 시 빨간색 테두리 */
+  .error-border {
+    border-color: red !important;
+  }
+  
+  /* 에러 텍스트 스타일 */
+  .error-text {
+    font-size: 14px;
+    color: red;
+    margin-top: 5px;
+  }
+  
+  /* 약관 동의 체크박스 영역 */
+  .terms-container {
+    margin: 20px 0;
+    display: flex;
+    align-items: flex-start;
+  }
+  
+  .terms-container input {
+    margin-right: 10px;
+    margin-top: 3px;
+  }
+  
+  /* 회원가입 버튼 */
+  .signup-button {
+    padding: 12px 0;
+    background-color: #388e3c; /* 진한 초록 */
+    color: #fff;
+    font-size: 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  
+  .signup-button:hover {
+    background-color: #2e7d32;
+  }
+  

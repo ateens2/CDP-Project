@@ -1,0 +1,192 @@
+/* CustomerManagement.css */
+.customer-management-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Header 아래 전체 콘텐츠 영역: 왼쪽 사이드바와 오른쪽 영역 */
+.content-area {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  transition: all 0.5s ease;
+}
+
+/* 왼쪽 Category 영역 */
+.category-section {
+  width: 240px;
+  border-right: 1px solid #e5e7eb;
+  background-color: #e8f5e9;
+  padding: 1rem;
+}
+
+/* 오른쪽 고객 리스트 영역 */
+.customer-list-section {
+  width: 100%;
+  padding: 1rem;
+  overflow-y: auto;
+  transition: width 0.5s ease;
+}
+
+.customer-list-section.shrink {
+  width: calc(100% - 850px);
+}
+
+/* 페이지네이션 컨트롤 (기존 스타일 유지) */
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.pagination button {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  background-color: #f9f9f9;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+.pagination button:hover {
+  background-color: #e5e7eb;
+}
+.pagination button.active {
+  background-color: #16a34a;
+  color: #fff;
+  border-color: #16a34a;
+}
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 고객 상세정보 패널 */
+.customer-edit-panel {
+  position: fixed;
+  top: 60px;  /* Header 높이 이후 */
+  right: -600px; /* 초기에는 화면 밖 */
+  width: 600px;
+  height: calc(100% - 60px);
+  background-color: #fff;
+  border-left: 1px solid #e5e7eb;
+  box-shadow: -2px 0 6px rgba(0, 0, 0, 0.1);
+  transition: right 0.5s ease;
+  padding: 1rem;
+  z-index: 10;
+  overflow-y: auto; /* 내부 스크롤 허용 */
+}
+.customer-edit-panel.open {
+  right: 0;
+}
+
+/* 상세정보 패널 내부 */
+.panel-inner {
+  display: flex;
+  flex-direction: column;
+}
+.panel-close-button {
+  align-self: flex-end;
+  padding: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  border: none;
+  background-color: #ccc;
+  cursor: pointer;
+}
+.panel-field {
+  margin-bottom: 1rem;
+}
+.panel-field label {
+  display: inline-block;
+  width: 30%;
+  font-weight: 600;
+}
+.panel-field input {
+  width: 70%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.panel-placeholder {
+  text-align: center;
+  margin-top: 2rem;
+  color: #666;
+}
+
+.search-bar-wrapper {
+  position: relative;
+  display: inline-block;  /* 아이콘과 input을 일자로 배치 */
+}
+
+/* 실제 입력창 */
+.search-bar-wrapper input {
+  width: 400px;            /* 원하시는 너비로 조정 */
+  padding: 8px 12px 8px 32px; /* 왼쪽 패딩을 크게 주어 아이콘 공간 확보 */
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* 아이콘 스타일 */
+.search-bar-wrapper .fa-search {
+  position: absolute;
+  left: 8px;               /* 입력창 왼쪽에서 8px 떨어진 위치 */
+  top: 50%;                /* 수직 중앙 정렬 */
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #888;             /* 아이콘 색상 */
+  pointer-events: none;    /* 아이콘 위 클릭이 input으로 전달되도록 */
+}
+/* 툴바 컨테이너 */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* ────────────────────────────────────────────────── */
+/* 툴바 우측의 아이콘 버튼 그룹 */
+.toolbar-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* 공통 아이콘 버튼 스타일 */
+.toolbar-button {
+  padding: 0.75rem;       /* 기본 0.5rem → 0.75rem으로 확대 */
+  font-size: 1.25rem;     /* 아이콘 크기 조절 */
+  width: 2.5rem;          /* 가로 고정 */
+  height: 2.5rem;
+  border: none;
+  border-radius: 0.25rem;
+  background: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.toolbar-button:hover {
+  background-color: #e8f5e9; /* 연한 그린 */
+}
+.toolbar-button i {
+  color: #16a34a; /* 진한 그린 */
+}
+
+.btn-new-customer {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: #16a34a;   /* green-600 */
+  color: #fff;
+  border-radius: 0.25rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.btn-new-customer:hover {
+  background-color: #15803d; /* green-700 */
+}
+.btn-new-customer i {
+  margin-right: 0.25rem;
+  color: #fff; /* 아이콘도 흰색으로 */
+}
+

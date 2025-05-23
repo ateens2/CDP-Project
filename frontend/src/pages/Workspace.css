@@ -1,0 +1,440 @@
+/* 전체 영역 스타일 */
+.workspace {
+  font-family: sans-serif;
+  background-color: #e8f5e9;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* 메인 레이아웃: 두 박스 사이 간격(gap) 추가 */
+.main {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 40px; /* 두 박스 사이 간격 */
+  margin-top: 30px;
+}
+
+/* 큰 박스(시트 박스) 스타일 */
+.box.sheet-box {
+  background-color: #ffffff;
+  border: 2px solid rgb(246,246,246);
+  padding: 20px;
+  width: 300px;
+  min-height: 400px;
+  text-align: center;
+  border-radius: 4px;
+  box-shadow: rgba(100, 100, 100, 0.2) 0px 0px 29px 0px;
+}
+
+/* 박스 타이틀 */
+.box-title {
+  font-size: 20px;
+  margin-bottom: 20px;
+  color: #333;
+  border-bottom: 1px solid rgb(226,226,226);
+}
+
+/* 시트 목록 박스 (내부 작은 박스) */
+.sheet-list {
+  border: 2px solid rgb(246,246,246);
+  border-radius: 4px;
+  padding: 10px;
+  min-height: 300px; /* 내용이 없을 때도 일정 높이 유지 */
+  margin-bottom: 20px;
+}
+
+/* 실제 시트 아이템 */
+.sheet-item {
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  transform-origin: center center;
+}
+
+.sheet-item:hover {
+  background-color: #e8f5e9;
+  transform: scale(1.02);
+}
+
+/* 업로드 버튼 스타일 */
+.upload-button {
+  display: inline-block;
+  padding: 12px 24px;
+  background-color: #6200ea;
+  color: #fff;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.upload-button:hover {
+  background-color: #4500b5;
+}
+
+/* Add 버튼 컨테이너: 박스 아래 중앙 정렬 */
+.add-button-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+.add-button-container > input{
+  display: none;
+}
+.workspace-unauthorized {
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  text-align: center;
+}
+.sheet-box.slide-left {
+  transform: translateX(-20vw);
+  transition: transform 0.5s ease;
+}
+
+/* Add/Update 버튼 컨테이너도 같이 왼쪽으로 이동 */
+.add-button-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+  transition: transform 0.5s ease;
+}
+
+.add-button-container.moved {
+  transform: translateX(-20vw);
+}
+
+/* DriveSheetSelector를 담는 컨테이너 – 오른쪽에서 슬라이드 인 (화면의 절반보다 약간 줄여 40vw 차지) */
+.drive-sheet-selector-container {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 40vw;
+  height: 100vh;
+  background-color: #ffffff;
+  border-left: 2px solid #e0e0e0;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  border-radius: 4px 0 0 4px;
+  transform: translateX(100%);
+  transition: transform 0.5s ease;
+  z-index: 10;
+  padding: 20px;
+}
+
+/* 컨테이너 열렸을 때 */
+.drive-sheet-selector-container.open {
+  transform: translateX(0);
+}
+
+/* DriveSheetSelector 내부 스타일 개선 */
+.drive-sheet-selector-container h3 {
+  margin-top: 0;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.drive-sheet-selector-container ul {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.drive-sheet-selector-container li {
+  margin-bottom: 10px;
+}
+
+.drive-sheet-selector-container button {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.drive-sheet-selector-container button:hover {
+  background-color: #e0e0e0;
+}
+
+/* Cancel 버튼 스타일 */
+.drive-sheet-selector-container > button {
+  margin-top: 10px;
+  background-color: #ff5252;
+  color: #fff;
+  border: none;
+}
+.sheet-box {
+  position: relative;
+}
+
+/* 물음표 아이콘 스타일 */
+.sheet-help-icon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 1.2rem;
+  color: #666;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.sheet-help-icon:hover {
+  color: #333;
+}
+
+/* 도움말 textarea */
+.help-textarea {
+  position: absolute;
+  top: 12px;               /* 아이콘과 수평 맞추기 */
+  left: 100%;              /* .sheet-box의 오른쪽 가장자리에 붙이기 */
+  margin-left: 8px;        /* 아이콘과 textarea 사이 간격 */
+  width: 300px;
+  height: 400px;
+  padding: 8px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f9f9f9;
+  resize: none;
+  z-index: 5;
+}
+
+.workspace-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f9f9f9;
+}
+
+.workspace-content {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.workspace-title {
+  margin-bottom: 2rem;
+  color: #333;
+  font-size: 2rem;
+}
+
+.workspace-section {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+}
+
+.section-title {
+  margin-top: 0;
+  font-size: 1.25rem;
+  color: #333;
+  margin-bottom: 1.5rem;
+}
+
+/* 연결된 스프레드시트 섹션 */
+.sheet-selection-area {
+  margin-top: 1rem;
+}
+
+.existing-sheet-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.existing-sheet-info {
+  margin-bottom: 1.5rem;
+}
+
+.existing-sheet-item {
+  display: flex;
+  align-items: center;
+  padding: 1.25rem;
+  border-radius: 8px;
+  background-color: #f0f7ff;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.sheet-icon {
+  font-size: 2rem;
+  margin-right: 1.5rem;
+}
+
+.sheet-details {
+  flex: 1;
+}
+
+.sheet-name {
+  font-weight: 500;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.sheet-id {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.sheet-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.sheet-action-btn {
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.sheet-action-btn:hover {
+  background-color: #3367d6;
+}
+
+.change-sheet-btn {
+  background-color: #f8f9fa;
+  color: #4285f4;
+  border: 1px solid #4285f4;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  align-self: flex-start;
+}
+
+.change-sheet-btn:hover {
+  background-color: #e8f0fe;
+}
+
+.no-sheet-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.no-sheet-wrapper p {
+  margin-bottom: 1.5rem;
+  color: #666;
+}
+
+.select-sheet-btn {
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.select-sheet-btn:hover {
+  background-color: #3367d6;
+}
+
+/* 필드 매핑 섹션 */
+.field-mapping-section {
+  margin-top: 1rem;
+}
+
+/* 도움말 섹션 */
+.help-section {
+  padding: 0;
+  overflow: hidden;
+}
+
+.help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.help-header:hover {
+  background-color: #f5f5f5;
+}
+
+.toggle-icon {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.help-content {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+  border-top: 1px solid #eee;
+}
+
+.help-item {
+  margin-top: 1.5rem;
+}
+
+.help-item h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: #333;
+}
+
+.help-item p {
+  margin: 0;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* 모달 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* 미인증 상태 */
+.workspace-unauthorized {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #f9f9f9;
+}
+
+.workspace-unauthorized h2 {
+  margin-top: 2rem;
+  color: #d32f2f;
+}
