@@ -14,12 +14,6 @@
 }
 
 /* 왼쪽 Category 영역 */
-.category-section {
-  width: 240px;
-  border-right: 1px solid #e5e7eb;
-  background-color: #e8f5e9;
-  padding: 1rem;
-}
 
 /* 오른쪽 고객 리스트 영역 */
 .customer-list-section {
@@ -30,7 +24,7 @@
 }
 
 .customer-list-section.shrink {
-  width: calc(100% - 850px);
+  width: calc(100% - 770px);
 }
 
 /* 페이지네이션 컨트롤 (기존 스타일 유지) */

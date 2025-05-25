@@ -2,33 +2,46 @@
 
 /* 사이드바 전체 컨테이너 */
 .sidebar {
-  width: 16rem; /* 256px */
+  width: 11rem; /* 256px */
   background-color: #e8f5e9; /* 연한 녹색 */
   color: #1f2937; /* 어두운 그레이 (텍스트 대비) */
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100%;
+  top: 120;
+  
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+  z-index: 10;
 }
 
 /* 로고 영역 */
 .logo {
-  padding: 1rem;
-  border-bottom: 1px solid #c8e6c9; /* 연한 녹색 계열의 테두리 */
+  padding: 1.5rem;
+  border-bottom: 1px solid #c8e6c9;
+  background: linear-gradient(to right, #e8f5e9, #f1f8e9);
 }
+
 .logo-text {
-  font-size: 1.125rem;
-  font-weight: bold;
+  font-size: 3rem;
+  font-weight: 700;
   color: #1f2937;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 /* 메뉴 영역 */
 nav {
   flex: 1;
+  padding: 1rem 0;
 }
+
 .menu-header {
-  padding: 1rem;
-  font-size: 0.875rem;
-  color: #2e7d32; /* 다크 그린 계열 */
+  padding: 1rem 1.5rem;
+  font-size: 1.2rem;
+  color: #2e7d32;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* .sidebar-item : a 태그와 button 모두에 동일하게 적용 */
@@ -37,50 +50,87 @@ nav {
   padding: 1rem 1.5rem;
   text-decoration: none;
   color: inherit;
-  transition: background-color 0.3s;
+  transition: all 0.3s ease;
   background: none;
   border: none;
   outline: none;
   cursor: pointer;
+  position: relative;
+  font-weight: 500;
+  margin: 0.25rem 0;
+  font-size: 1.1rem;
 }
 
 .sidebar-item:hover {
-  background-color: #c8e6c9; /* 호버 시 조금 더 진한 연한 녹색 */
+  background-color: #c8e6c9;
+  padding-left: 2rem;
 }
 
 .sidebar-item.active {
-  background-color: #a5d6a7; /* 활성화된 메뉴는 약간 더 어두운 녹색 */
+  background-color: #a5d6a7;
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 #2e7d32;
 }
 
 /* 하단 프로필 영역 */
 .profile {
-  padding: 1rem;
+  padding: 1.25rem;
   border-top: 1px solid #c8e6c9;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
+  background: linear-gradient(to right, #e8f5e9, #f1f8e9);
 }
+
 .avatar {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 3rem;
+  height: 3rem;
   border-radius: 9999px;
-  background-color: #66bb6a; /* 중간 녹색 */
+  background-color: #66bb6a;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
 }
+
+.avatar:hover {
+  transform: scale(1.05);
+}
+
 .profile-info {
   display: flex;
   flex-direction: column;
+  gap: 0.25rem;
 }
+
 .profile-name {
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   color: #1f2937;
 }
+
 .profile-role {
   font-size: 0.875rem;
   color: #2e7d32;
+  font-weight: 500;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+  }
+  
+  .logo {
+    padding: 1rem;
+  }
+  
+  .profile {
+    padding: 1rem;
+  }
 }

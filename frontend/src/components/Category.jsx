@@ -1,17 +1,34 @@
 // src/components/Category.jsx
 import React, { useContext, useState } from "react";
 import { UserContext } from "../contexts/UserContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./Category.css";
 
-const Category = () => {
-  const { user } = useContext(UserContext);
+const Category = ({ sheet }) => {
+  const { user, sheets } = useContext(UserContext);
+  const { pathname } = useLocation();
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState("고객 관리");
+  const defaultCategory = pathname.includes("/customer-management")
+    ? "고객 관리"
+    : pathname.includes("/data-analytics")
+    ? "매출 분석"
+    : "";
+
+  const [activeCategory, setActiveCategory] = useState(defaultCategory);
 
   const handleCategoryClick = (category, path) => {
     setActiveCategory(category);
-    navigate(path);
+    // 넘겨받은 sheet가 있으면 그 값을, 없으면 UserContext에서 가져온다
+    const sheetToPass =
+      sheet || (sheets && sheets.length > 0 ? sheets[0] : null);
+
+    console.log("Category에서 이동 - 전달할 시트:", sheetToPass);
+
+    if (sheetToPass) {
+      navigate(path, { state: { sheet: sheetToPass } });
+    } else {
+      navigate(path);
+    }
   };
 
   return (
@@ -37,15 +54,6 @@ const Category = () => {
           매출 분석
         </button>
       </nav>
-      <div className="profile">
-        <div className="avatar">
-          {user && user.displayName ? user.displayName.charAt(0) : "U"}
-        </div>
-        <div className="profile-info">
-          <div className="profile-name">{user ? user.displayName : "User"}</div>
-          <div className="profile-role">영업 관리자</div>
-        </div>
-      </div>
     </div>
   );
 };
