@@ -167,7 +167,8 @@ const FieldMappingTool = ({ sheet, onMapComplete }) => {
             <li><strong>총 구매 금액:</strong> 제품 판매 기록을 기반으로 고객별로 자동 계산됨</li>
             <li><strong>총 구매 횟수:</strong> 제품 판매 기록을 기반으로 고객별로 자동 계산됨</li>
             <li><strong>마지막 구매일:</strong> 제품 판매 기록에서 가장 최근 주문 일자로 자동 설정됨</li>
-            <li><strong>탄소 감축 등급/점수:</strong> 현재는 빈 상태로 생성됨 (향후 계산 기능 추가 예정)</li>
+            <li><strong>탄소 감축 점수:</strong> 구매한 제품별로 카테고리 기준 제품 대비 탄소 감축량을 계산하여 자동 산출됨</li>
+            <li><strong>탄소 감축 등급:</strong> 탄소 감축 점수에 따라 브론즈/실버/골드/플래티넘/다이아몬드 등급으로 자동 분류됨</li>
           </ul>
         </div>
       </div>

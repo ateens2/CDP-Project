@@ -223,15 +223,20 @@ router.post('/map-fields', async (req, res) => {
           await calculateCustomerPurchaseStats(sheets, spreadsheetId, salesSheetName, customerSheetName);
           console.log('고객별 구매 통계 계산 완료');
           
+          // 고객별 탄소 감축 점수 및 등급 계산
+          console.log('고객별 탄소 감축 점수 및 등급 계산 시작...');
+          await calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetName, customerSheetName);
+          console.log('고객별 탄소 감축 점수 및 등급 계산 완료');
+          
           // 결과 메시지 생성
           let message = '';
           if (sheetsToCreate.length === 2) {
-            message = '제품 판매 기록 및 고객 정보 시트가 성공적으로 생성되고, 구매 통계가 계산되었습니다.';
+            message = '제품 판매 기록 및 고객 정보 시트가 성공적으로 생성되고, 구매 통계 및 탄소 감축 점수가 계산되었습니다.';
           } else if (sheetsToCreate.length === 1) {
             const createdSheetName = sheetsToCreate[0].addSheet.properties.title;
-            message = `${createdSheetName} 시트가 새로 생성되고, 기존 시트가 업데이트되었으며, 구매 통계가 계산되었습니다.`;
+            message = `${createdSheetName} 시트가 새로 생성되고, 기존 시트가 업데이트되었으며, 구매 통계 및 탄소 감축 점수가 계산되었습니다.`;
           } else {
-            message = '기존 제품 판매 기록 및 고객 정보 시트가 성공적으로 업데이트되고, 구매 통계가 재계산되었습니다.';
+            message = '기존 제품 판매 기록 및 고객 정보 시트가 성공적으로 업데이트되고, 구매 통계 및 탄소 감축 점수가 재계산되었습니다.';
           }
           
           resolve({
@@ -754,6 +759,223 @@ function getColumnLetter(columnNumber) {
     columnNumber = Math.floor(columnNumber / 26);
   }
   return result;
+}
+
+// 고객별 탄소 감축 점수 및 등급 계산 함수
+async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetName, customerSheetName) {
+  console.log('탄소 감축 점수 및 등급 계산 시작...');
+  
+  try {
+    // 탄소 배출량 데이터 로드
+    const carbonDataPath = path.join(__dirname, '../../data/생활용품 탄소배출량.csv');
+    const categoryDataPath = path.join(__dirname, '../../data/카테고리 별 기준 제품.csv');
+    
+    if (!fs.existsSync(carbonDataPath) || !fs.existsSync(categoryDataPath)) {
+      console.log('탄소 배출량 데이터 파일을 찾을 수 없습니다.');
+      return;
+    }
+    
+    // CSV 파일 읽기
+    const carbonData = fs.readFileSync(carbonDataPath, 'utf8');
+    const categoryData = fs.readFileSync(categoryDataPath, 'utf8');
+    
+    // CSV 파싱
+    const carbonLines = carbonData.split('\n').slice(1); // 헤더 제외
+    const categoryLines = categoryData.split('\n').slice(1); // 헤더 제외
+    
+    // 제품별 탄소 배출량 맵 생성
+    const productCarbonMap = {};
+    carbonLines.forEach(line => {
+      if (line.trim()) {
+        const [industry, code, productName, emissionFactor, weightFactor, totalEmission, category, isBaseProduct] = line.split(',');
+        if (productName && totalEmission) {
+          productCarbonMap[productName.trim()] = {
+            totalEmission: parseFloat(totalEmission.trim()),
+            category: category.trim()
+          };
+        }
+      }
+    });
+    
+    // 카테고리별 기준 제품 탄소 배출량 맵 생성
+    const categoryBaseMap = {};
+    categoryLines.forEach(line => {
+      if (line.trim()) {
+        const [category, baseProductName, productCode, baseEmission] = line.split(',');
+        if (category && baseEmission) {
+          categoryBaseMap[category.trim()] = parseFloat(baseEmission.trim());
+        }
+      }
+    });
+    
+    // 판매 데이터 가져오기
+    const salesResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${salesSheetName}'!A:H`, // A부터 H열까지 (주문 상태까지)
+    });
+    
+    const salesRows = salesResponse.data.values || [];
+    if (salesRows.length < 2) {
+      console.log('판매 데이터가 충분하지 않습니다.');
+      return;
+    }
+    
+    // 고객 데이터 가져오기
+    const customerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${customerSheetName}'!A:J`, // A부터 J열까지 (탄소 감축 점수까지)
+    });
+    
+    const customerRows = customerResponse.data.values || [];
+    if (customerRows.length < 2) {
+      console.log('고객 데이터가 충분하지 않습니다.');
+      return;
+    }
+    
+    // 헤더 확인
+    const salesHeaders = salesRows[0];
+    const customerHeaders = customerRows[0];
+    
+    console.log('Sales headers:', salesHeaders);
+    console.log('Customer headers:', customerHeaders);
+    
+    // 필요한 컬럼 인덱스 찾기
+    const orderNameIdx = salesHeaders.findIndex(h => h === '주문자명');
+    const productNameIdx = salesHeaders.findIndex(h => h === '상품명');
+    const unitPriceIdx = salesHeaders.findIndex(h => h === '단가');
+    const quantityIdx = salesHeaders.findIndex(h => h === '수량');
+    const totalAmountIdx = salesHeaders.findIndex(h => h === '총_주문_금액');
+    const customerNameIdx = customerHeaders.findIndex(h => h === '고객명');
+    const carbonScoreIdx = customerHeaders.findIndex(h => h === '탄소_감축_점수');
+    const carbonGradeIdx = customerHeaders.findIndex(h => h === '탄소_감축_등급');
+    
+    console.log('Found indices:', {
+      orderNameIdx, productNameIdx, unitPriceIdx, quantityIdx, totalAmountIdx,
+      customerNameIdx, carbonScoreIdx, carbonGradeIdx
+    });
+    
+    if (orderNameIdx === -1 || productNameIdx === -1 || totalAmountIdx === -1 || customerNameIdx === -1 || carbonScoreIdx === -1 || carbonGradeIdx === -1) {
+      console.log('필요한 컬럼을 찾을 수 없습니다.');
+      return;
+    }
+    
+    // 고객별 탄소 감축 점수 계산
+    const customerCarbonStats = {};
+    
+    // 판매 데이터를 순회하며 고객별 구매 정보 수집
+    for (let i = 1; i < salesRows.length; i++) {
+      const row = salesRows[i];
+      if (row.length === 0) continue;
+      
+      const customerName = row[orderNameIdx]?.toString().trim();
+      const productName = row[productNameIdx]?.toString().trim();
+      const unitPrice = parseFloat(row[unitPriceIdx]?.toString().replace(/[^0-9.-]/g, '') || '0');
+      const totalAmount = parseFloat(row[totalAmountIdx]?.toString().replace(/[^0-9.-]/g, '') || '0');
+      
+      // 수량 필드가 있으면 사용, 없으면 계산
+      let quantity = 1;
+      if (quantityIdx !== -1 && row[quantityIdx]) {
+        quantity = parseInt(row[quantityIdx]?.toString().replace(/[^0-9]/g, '') || '1');
+      } else if (unitPrice > 0) {
+        quantity = Math.round(totalAmount / unitPrice);
+      }
+      
+      if (!customerName || !productName || totalAmount <= 0 || quantity <= 0) continue;
+      
+      // 제품의 탄소 배출량 정보 찾기
+      let productInfo = productCarbonMap[productName];
+      if (!productInfo) {
+        // 정확한 매칭이 안 되면 유사한 제품명 찾기
+        let bestMatch = null;
+        
+        for (const [mapProductName, info] of Object.entries(productCarbonMap)) {
+          if (productName.includes(mapProductName.replace(/\s/g, '')) || 
+              mapProductName.includes(productName.replace(/\s/g, ''))) {
+            bestMatch = info;
+            console.log(`제품 "${productName}"을 "${mapProductName}"으로 매칭했습니다.`);
+            break;
+          }
+        }
+        
+        if (!bestMatch) {
+          console.log(`제품 "${productName}"의 탄소 배출량 정보를 찾을 수 없습니다.`);
+          continue;
+        }
+        productInfo = bestMatch;
+      }
+      
+      // 카테고리의 기준 제품 탄소 배출량 찾기
+      const baseEmission = categoryBaseMap[productInfo.category];
+      if (baseEmission === undefined) {
+        console.log(`카테고리 "${productInfo.category}"의 기준 제품 탄소 배출량을 찾을 수 없습니다.`);
+        continue;
+      }
+      
+      // 탄소 감축 점수 계산 (기준 배출량 - 제품 배출량)
+      const carbonReduction = baseEmission - productInfo.totalEmission;
+      const totalCarbonReduction = carbonReduction * quantity;
+      
+      if (!customerCarbonStats[customerName]) {
+        customerCarbonStats[customerName] = 0;
+      }
+      
+      customerCarbonStats[customerName] += totalCarbonReduction;
+      
+      console.log(`${customerName}: ${productName} ${quantity}개 구매, 단위 탄소 감축: ${carbonReduction.toFixed(2)}, 총 탄소 감축: ${totalCarbonReduction.toFixed(2)}`);
+    }
+    
+    // 탄소 감축 등급 계산 함수
+    function getCarbonGrade(score) {
+      if (score < 0) return '브론즈';
+      if (score < 200) return '브론즈';
+      if (score < 500) return '실버';
+      if (score < 1000) return '골드';
+      if (score < 3000) return '플래티넘';
+      return '다이아몬드';
+    }
+    
+    // 고객 시트 업데이트 준비
+    const updateRequests = [];
+    
+    for (let i = 1; i < customerRows.length; i++) {
+      const row = customerRows[i];
+      if (row.length === 0) continue;
+      
+      const customerName = row[customerNameIdx]?.toString().trim();
+      if (!customerName) continue;
+      
+      const carbonScore = customerCarbonStats[customerName] || 0;
+      const carbonGrade = getCarbonGrade(carbonScore);
+      
+      // 탄소 감축 점수 업데이트
+      updateRequests.push({
+        range: `'${customerSheetName}'!${getColumnLetter(carbonScoreIdx + 1)}${i + 1}`,
+        values: [[Math.round(carbonScore * 100) / 100]] // 소수점 둘째 자리까지
+      });
+      
+      // 탄소 감축 등급 업데이트
+      updateRequests.push({
+        range: `'${customerSheetName}'!${getColumnLetter(carbonGradeIdx + 1)}${i + 1}`,
+        values: [[carbonGrade]]
+      });
+    }
+    
+    // 배치 업데이트 실행
+    if (updateRequests.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        resource: {
+          valueInputOption: 'USER_ENTERED',
+          data: updateRequests
+        }
+      });
+      
+      console.log(`${updateRequests.length / 2}명의 고객 탄소 감축 데이터가 업데이트되었습니다.`);
+    }
+    
+  } catch (error) {
+    console.error('탄소 감축 점수 계산 중 오류 발생:', error);
+  }
 }
 
 module.exports = router; 
