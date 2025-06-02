@@ -13,7 +13,7 @@ const mysqlConfig = {
   port: process.env.MYSQL_PORT || 3306,
   user: process.env.MYSQL_USER,
   password: process.env.MYSQL_PASSWORD,
-  database: process.env.MYSQL_DATABASE,
+  database: process.env.MYSQL_NAME,
   namedPlaceholders: true,
 };
 
@@ -52,6 +52,10 @@ passport.use(new GoogleStrategy(
     callbackURL: process.env.GOOGLE_CALLBACK_URL,
   },
   async (accessToken, refreshToken, profile, done) => {
+    console.log("\n[AUTH_DEBUG] GoogleStrategy callback_BEGIN");
+    console.log("[AUTH_DEBUG] Received accessToken:", accessToken);
+    console.log("[AUTH_DEBUG] Received refreshToken:", refreshToken);
+    console.log("[AUTH_DEBUG] Received profile:", JSON.stringify(profile, null, 2));
     let connection;
     try {
       connection = await mysql.createConnection(mysqlConfig);
@@ -83,10 +87,11 @@ passport.use(new GoogleStrategy(
       
       return done(null, userForSession);
     } catch (err) {
-      console.error("MySQL error in GoogleStrategy:", err);
+      console.error("[AUTH_DEBUG] MySQL error or other error in GoogleStrategy:", err);
       return done(err, null);
     } finally {
       if (connection) await connection.end();
+      console.log("[AUTH_DEBUG] GoogleStrategy callback_END\n");
     }
   }
 ));

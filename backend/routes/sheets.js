@@ -116,10 +116,10 @@ router.post('/map-fields', async (req, res) => {
         }
         
         try {
-          // 매핑 결과 파싱
-          const mappingData = parseMappingOutput(mappingResult);
+          // 새로운 매핑 결과 파싱
+          const { salesMapping, customerMapping } = parseNewMappingOutput(mappingResult);
           
-          // 매핑된 필드로 새로운 시트 생성
+          // Google Sheets API 설정
           const oauth2Client = new google.auth.OAuth2();
           oauth2Client.setCredentials({ access_token: req.user.accessToken });
           const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
@@ -132,9 +132,6 @@ router.post('/map-fields', async (req, res) => {
           // 첫 번째 시트 이름 가져오기
           const originalSheetName = spreadsheetInfo.data.sheets[0].properties.title;
           
-          // 매핑된 시트 이름 생성
-          const mappedSheetName = 'Mapped_Data';
-          
           // 기존 데이터 가져오기
           const dataResponse = await sheets.spreadsheets.values.get({
             spreadsheetId,
@@ -142,43 +139,109 @@ router.post('/map-fields', async (req, res) => {
           });
           
           const originalData = dataResponse.data.values || [[]];
+          const originalHeaders = originalData[0] || [];
+          const originalRows = originalData.slice(1);
           
-          // 새로운 시트 생성
-          await sheets.spreadsheets.batchUpdate({
+          // 두 개의 새 시트 생성 또는 기존 시트 확인
+          const salesSheetName = '제품_판매_기록';
+          const customerSheetName = '고객_정보';
+          
+          // 기존 시트 확인
+          const existingSheets = spreadsheetInfo.data.sheets.map(sheet => sheet.properties.title);
+          const salesSheetExists = existingSheets.includes(salesSheetName);
+          const customerSheetExists = existingSheets.includes(customerSheetName);
+          
+          // 새로 생성할 시트들만 추가
+          const sheetsToCreate = [];
+          if (!salesSheetExists) {
+            sheetsToCreate.push({
+              addSheet: {
+                properties: { title: salesSheetName }
+              }
+            });
+          }
+          if (!customerSheetExists) {
+            sheetsToCreate.push({
+              addSheet: {
+                properties: { title: customerSheetName }
+              }
+            });
+          }
+          
+          // 새 시트가 있는 경우에만 생성 요청
+          if (sheetsToCreate.length > 0) {
+            await sheets.spreadsheets.batchUpdate({
+              spreadsheetId,
+              resource: {
+                requests: sheetsToCreate
+              }
+            });
+          }
+          
+          // 제품 판매 기록 시트 데이터 생성
+          const salesData = createSalesSheetData(originalHeaders, originalRows, salesMapping);
+          
+          // 고객 정보 시트 데이터 생성
+          const customerData = createCustomerSheetData(originalHeaders, originalRows, customerMapping);
+          
+          // 제품 판매 기록 시트에 데이터 쓰기 (기존 데이터 덮어쓰기)
+          // 먼저 기존 데이터 영역을 모두 지움
+          await sheets.spreadsheets.values.clear({
             spreadsheetId,
-            resource: {
-              requests: [{
-                addSheet: {
-                  properties: {
-                    title: mappedSheetName,
-                  }
-                }
-              }]
-            }
+            range: `'${salesSheetName}'!A:Z`,
           });
           
-          // 매핑된 헤더 생성
-          const mappedHeaders = headers.map(header => {
-            const mapping = mappingData.find(m => m.originalField === header);
-            return mapping ? mapping.standardField : header;
-          });
-          
-          // 새 시트에 데이터 쓰기 (원본 데이터의 첫 번째 행을 매핑된 헤더로 대체)
-          const mappedData = [mappedHeaders, ...originalData.slice(1)];
-          
+          // 새 데이터 쓰기
           await sheets.spreadsheets.values.update({
             spreadsheetId,
-            range: `'${mappedSheetName}'!A1`,
+            range: `'${salesSheetName}'!A1`,
             valueInputOption: 'RAW',
             resource: {
-              values: mappedData
+              values: salesData
             }
           });
           
+          // 고객 정보 시트에 데이터 쓰기 (기존 데이터 덮어쓰기)
+          // 먼저 기존 데이터 영역을 모두 지움
+          await sheets.spreadsheets.values.clear({
+            spreadsheetId,
+            range: `'${customerSheetName}'!A:Z`,
+          });
+          
+          // 새 데이터 쓰기
+          await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `'${customerSheetName}'!A1`,
+            valueInputOption: 'RAW',
+            resource: {
+              values: customerData
+            }
+          });
+          
+          // 고객별 구매 통계 계산 및 업데이트
+          console.log('고객별 구매 통계 계산 시작...');
+          await calculateCustomerPurchaseStats(sheets, spreadsheetId, salesSheetName, customerSheetName);
+          console.log('고객별 구매 통계 계산 완료');
+          
+          // 결과 메시지 생성
+          let message = '';
+          if (sheetsToCreate.length === 2) {
+            message = '제품 판매 기록 및 고객 정보 시트가 성공적으로 생성되고, 구매 통계가 계산되었습니다.';
+          } else if (sheetsToCreate.length === 1) {
+            const createdSheetName = sheetsToCreate[0].addSheet.properties.title;
+            message = `${createdSheetName} 시트가 새로 생성되고, 기존 시트가 업데이트되었으며, 구매 통계가 계산되었습니다.`;
+          } else {
+            message = '기존 제품 판매 기록 및 고객 정보 시트가 성공적으로 업데이트되고, 구매 통계가 재계산되었습니다.';
+          }
+          
           resolve({
-            mappingData,
-            message: '필드 매핑 및 새 시트 생성이 완료되었습니다.',
-            newSheetName: mappedSheetName
+            salesMapping,
+            customerMapping,
+            message,
+            salesSheetName,
+            customerSheetName,
+            salesSheetExists,
+            customerSheetExists
           });
         } catch (err) {
           reject(err);
@@ -205,42 +268,177 @@ router.post('/map-fields', async (req, res) => {
   }
 });
 
-// AI 출력 결과 파싱 함수
-function parseMappingOutput(output) {
-  const mappingResults = [];
+// 새로운 AI 출력 결과 파싱 함수
+function parseNewMappingOutput(output) {
   const lines = output.split('\n');
+  const salesMapping = {};
+  const customerMapping = {};
   
-  // "필드 매핑 결과:" 이후의 라인만 처리
-  let resultStarted = false;
+  let currentSection = null;
+  let inMappingSection = false;
   
   for (const line of lines) {
-    if (line.includes('필드 매핑 결과:')) {
-      resultStarted = true;
+    // 섹션 구분
+    if (line.includes('제품 판매 기록 시트 매핑 결과:')) {
+      currentSection = 'sales';
+      inMappingSection = true;
       continue;
+    } else if (line.includes('고객 정보 시트 매핑 결과:')) {
+      currentSection = 'customer';
+      inMappingSection = true;
+      continue;
+    } else if (line.includes('최종 매핑 요약')) {
+      inMappingSection = false;
+      break;
     }
     
-    if (resultStarted && line.includes('→')) {
-      // "원본필드 → 표준필드 (유사도: 0.xxxx)" 형식 파싱
+    // 매핑 결과 파싱
+    if (inMappingSection && line.includes('→')) {
       const parts = line.split('→');
       if (parts.length === 2) {
         const originalField = parts[0].trim();
-        const secondPart = parts[1].trim(); // "표준필드 (유사도: 0.xxxx)"
+        const restPart = parts[1].trim();
         
-        const scoreMatch = secondPart.match(/\(유사도: ([\d.]+)\)/);
-        const score = scoreMatch ? parseFloat(scoreMatch[1]) : 0;
-        
-        const standardField = secondPart.replace(/\(유사도: [\d.]+\)/, '').trim();
-        
-        mappingResults.push({
-          originalField,
-          standardField,
-          score
-        });
+        // "없음" 처리
+        if (restPart.includes('없음')) {
+          if (currentSection === 'sales') {
+            salesMapping[originalField] = null;
+          } else if (currentSection === 'customer') {
+            customerMapping[originalField] = null;
+          }
+        } else {
+          // 정상 매핑 처리
+          const fieldMatch = restPart.match(/^([^\(]+)/);
+          if (fieldMatch) {
+            const mappedField = fieldMatch[1].trim();
+            if (currentSection === 'sales') {
+              salesMapping[originalField] = mappedField;
+            } else if (currentSection === 'customer') {
+              customerMapping[originalField] = mappedField;
+            }
+          }
+        }
       }
     }
   }
   
-  return mappingResults;
+  return { salesMapping, customerMapping };
+}
+
+// 제품 판매 기록 시트 데이터 생성
+function createSalesSheetData(originalHeaders, originalRows, salesMapping) {
+  // 제품 판매 기록 시트 헤더 정의
+  const salesHeaders = [
+    '주문_번호', '주문자명', '주문_일자', '거래_완료_일자', 
+    '상품명', '단가', '총_주문_금액', '주문_상태'
+  ];
+  
+  // 매핑 인덱스 생성
+  const mappingIndices = {};
+  salesHeaders.forEach(targetField => {
+    for (const [originalField, mappedField] of Object.entries(salesMapping)) {
+      if (mappedField === targetField) {
+        const index = originalHeaders.indexOf(originalField);
+        if (index !== -1) {
+          mappingIndices[targetField] = index;
+        }
+        break;
+      }
+    }
+  });
+  
+  // 데이터 변환
+  const salesData = [salesHeaders];
+  
+  originalRows.forEach(row => {
+    const newRow = salesHeaders.map(targetField => {
+      const index = mappingIndices[targetField];
+      return index !== undefined ? (row[index] || '') : '';
+    });
+    
+    // 예외 처리: 거래_완료_일자가 없으면 주문_일자 + 3일
+    if (!mappingIndices['거래_완료_일자'] && mappingIndices['주문_일자']) {
+      const orderDateIndex = salesHeaders.indexOf('주문_일자');
+      const completionDateIndex = salesHeaders.indexOf('거래_완료_일자');
+      const orderDate = newRow[orderDateIndex];
+      
+      if (orderDate) {
+        try {
+          const date = new Date(orderDate);
+          date.setDate(date.getDate() + 3);
+          newRow[completionDateIndex] = date.toISOString().split('T')[0];
+        } catch (e) {
+          newRow[completionDateIndex] = '';
+        }
+      }
+    }
+    
+    // 예외 처리: 주문_상태가 없으면 '거래 완료'
+    if (!mappingIndices['주문_상태']) {
+      const statusIndex = salesHeaders.indexOf('주문_상태');
+      newRow[statusIndex] = '거래 완료';
+    }
+    
+    salesData.push(newRow);
+  });
+  
+  return salesData;
+}
+
+// 고객 정보 시트 데이터 생성
+function createCustomerSheetData(originalHeaders, originalRows, customerMapping) {
+  // 고객 정보 시트 헤더 정의
+  const customerHeaders = [
+    '고객ID', '고객명', '연락처', '이메일', '가입일',
+    '마지막_구매일', '총_구매_금액', '총_구매_횟수', '탄소_감축_등급', '탄소_감축_점수'
+  ];
+  
+  // 매핑 인덱스 생성 (계산용 필드 제외)
+  const mappingIndices = {};
+  const basicFields = ['고객ID', '고객명', '연락처', '이메일', '가입일'];
+  
+  basicFields.forEach(targetField => {
+    for (const [originalField, mappedField] of Object.entries(customerMapping)) {
+      if (mappedField === targetField) {
+        const index = originalHeaders.indexOf(originalField);
+        if (index !== -1) {
+          mappingIndices[targetField] = index;
+        }
+        break;
+      }
+    }
+  });
+  
+  // 고객 데이터 중복 제거 및 변환
+  const customerData = [customerHeaders];
+  const seenCustomers = new Set();
+  
+  originalRows.forEach(row => {
+    // 고객 식별자 생성 (고객ID 또는 고객명 기준)
+    const customerIdIndex = mappingIndices['고객ID'];
+    const customerNameIndex = mappingIndices['고객명'];
+    const customerId = customerIdIndex !== undefined ? row[customerIdIndex] : '';
+    const customerName = customerNameIndex !== undefined ? row[customerNameIndex] : '';
+    
+    const customerKey = customerId || customerName;
+    
+    if (customerKey && !seenCustomers.has(customerKey)) {
+      seenCustomers.add(customerKey);
+      
+      const newRow = customerHeaders.map(targetField => {
+        if (['마지막_구매일', '총_구매_금액', '총_구매_횟수', '탄소_감축_등급', '탄소_감축_점수'].includes(targetField)) {
+          return ''; // 계산용 필드는 빈 값 (마지막_구매일, 총_구매_금액, 총_구매_횟수는 나중에 calculateCustomerPurchaseStats에서 계산됨)
+        }
+        
+        const index = mappingIndices[targetField];
+        return index !== undefined ? (row[index] || '') : '';
+      });
+      
+      customerData.push(newRow);
+    }
+  });
+  
+  return customerData;
 }
 
 // --- 감사 로그를 위한 새로운 함수 및 라우트 ---
@@ -404,5 +602,158 @@ router.get('/debug-session', (req, res) => {
     hasAccessToken: !!(req.user && req.user.accessToken)
   });
 });
+
+// 고객별 구매 통계 계산 함수
+async function calculateCustomerPurchaseStats(sheets, spreadsheetId, salesSheetName, customerSheetName) {
+  try {
+    // 제품 판매 기록 시트 데이터 가져오기
+    const salesResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${salesSheetName}'!A:H`, // 제품 판매 기록 시트의 모든 컬럼
+    });
+    
+    const salesData = salesResponse.data.values || [];
+    if (salesData.length <= 1) {
+      console.log('제품 판매 기록 데이터가 없어 통계 계산을 건너뜁니다.');
+      return;
+    }
+    
+    // 고객 정보 시트 데이터 가져오기
+    const customerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${customerSheetName}'!A:J`, // 고객 정보 시트의 모든 컬럼
+    });
+    
+    const customerData = customerResponse.data.values || [];
+    if (customerData.length <= 1) {
+      console.log('고객 정보 데이터가 없어 통계 계산을 건너뜁니다.');
+      return;
+    }
+    
+    // 헤더 분석
+    const salesHeaders = salesData[0];
+    const customerHeaders = customerData[0];
+    
+    // 필요한 컬럼 인덱스 찾기
+    const salesIndices = {
+      주문자명: salesHeaders.indexOf('주문자명'),
+      총_주문_금액: salesHeaders.indexOf('총_주문_금액'),
+      주문_일자: salesHeaders.indexOf('주문_일자')
+    };
+    
+    const customerIndices = {
+      고객명: customerHeaders.indexOf('고객명'),
+      총_구매_금액: customerHeaders.indexOf('총_구매_금액'),
+      총_구매_횟수: customerHeaders.indexOf('총_구매_횟수'),
+      마지막_구매일: customerHeaders.indexOf('마지막_구매일')
+    };
+    
+    console.log('Sales indices:', salesIndices);
+    console.log('Customer indices:', customerIndices);
+    
+    // 고객별 구매 통계 계산
+    const customerStats = {};
+    
+    // 제품 판매 기록을 순회하며 고객별 통계 집계
+    for (let i = 1; i < salesData.length; i++) {
+      const row = salesData[i];
+      const customerName = row[salesIndices.주문자명] || '';
+      const totalAmount = parseFloat(row[salesIndices.총_주문_금액] || 0);
+      const orderDate = row[salesIndices.주문_일자] || '';
+      
+      if (!customerName) continue;
+      
+      if (!customerStats[customerName]) {
+        customerStats[customerName] = {
+          totalAmount: 0,
+          totalCount: 0,
+          lastPurchaseDate: ''
+        };
+      }
+      
+      customerStats[customerName].totalAmount += totalAmount;
+      customerStats[customerName].totalCount += 1;
+      
+      // 마지막 구매일 업데이트 (더 최근 날짜로)
+      if (orderDate && (!customerStats[customerName].lastPurchaseDate || 
+          new Date(orderDate) > new Date(customerStats[customerName].lastPurchaseDate))) {
+        customerStats[customerName].lastPurchaseDate = orderDate;
+      }
+    }
+    
+    console.log('계산된 고객 통계:', customerStats);
+    
+    // 고객 정보 시트 업데이트
+    const updates = [];
+    
+    for (let i = 1; i < customerData.length; i++) {
+      const row = customerData[i];
+      const customerName = row[customerIndices.고객명] || '';
+      
+      if (customerName && customerStats[customerName]) {
+        const stats = customerStats[customerName];
+        
+        // 업데이트할 셀 범위와 값 준비
+        const rowNumber = i + 1; // Google Sheets는 1부터 시작
+        
+        // 총 구매 금액 업데이트
+        if (customerIndices.총_구매_금액 !== -1) {
+          updates.push({
+            range: `'${customerSheetName}'!${getColumnLetter(customerIndices.총_구매_금액 + 1)}${rowNumber}`,
+            values: [[stats.totalAmount]]
+          });
+        }
+        
+        // 총 구매 횟수 업데이트
+        if (customerIndices.총_구매_횟수 !== -1) {
+          updates.push({
+            range: `'${customerSheetName}'!${getColumnLetter(customerIndices.총_구매_횟수 + 1)}${rowNumber}`,
+            values: [[stats.totalCount]]
+          });
+        }
+        
+        // 마지막 구매일 업데이트
+        if (customerIndices.마지막_구매일 !== -1 && stats.lastPurchaseDate) {
+          updates.push({
+            range: `'${customerSheetName}'!${getColumnLetter(customerIndices.마지막_구매일 + 1)}${rowNumber}`,
+            values: [[stats.lastPurchaseDate]]
+          });
+        }
+      }
+    }
+    
+    // 배치 업데이트 실행
+    if (updates.length > 0) {
+      console.log(`${updates.length}개의 셀을 업데이트합니다.`);
+      
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        resource: {
+          valueInputOption: 'RAW',
+          data: updates
+        }
+      });
+      
+      console.log('고객 구매 통계 업데이트 완료');
+    } else {
+      console.log('업데이트할 데이터가 없습니다.');
+    }
+    
+  } catch (error) {
+    console.error('고객 구매 통계 계산 중 오류:', error);
+    throw error;
+  }
+}
+
+// 컬럼 번호를 Excel 스타일 문자로 변환하는 헬퍼 함수
+function getColumnLetter(columnNumber) {
+  let result = '';
+  while (columnNumber > 0) {
+    columnNumber--;
+    result = String.fromCharCode(65 + (columnNumber % 26)) + result;
+    columnNumber = Math.floor(columnNumber / 26);
+  }
+  return result;
+}
 
 module.exports = router; 

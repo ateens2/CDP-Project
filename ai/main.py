@@ -12,7 +12,7 @@ if len(sys.argv) > 1:
 else:
     # 기본 CSV 경로 설정 (명령줄 인수가 없을 경우)
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_path = os.path.join(current_dir, "더미_고객_데이터_테스트셋.csv")
+    csv_path = os.path.join(current_dir, "고객_구매_기록_더미데이터_확장.csv")
 
 # CPU 모드로 강제 설정
 torch.set_num_threads(4)
@@ -22,88 +22,181 @@ os.environ['CUDA_VISIBLE_DEVICES'] = ''
 df = pd.read_csv(csv_path)
 input_columns = df.columns.tolist()
 
-# 내부 표준 필드 정의 (영문 필드)
-standard_fields = [
-    "customer_id", "name", "email", "contact", "signup_date",
-    "order_id", "order_date", "order_status", "total_price",
-    "payment_method", "shipping_address",
-    "product_id", "product_name", "product_category", "product_price", "quantity",
-    "inquiry_id", "inquiry_type", "inquiry_create", "inquiry_finish", "inquiry_status"
+# 코사인 유사도 임계값 설정
+SIMILARITY_THRESHOLD = 0.7
+
+# 제품 판매 기록 시트 필드 정의
+sales_fields = [
+    "주문_번호", "주문자명", "주문_일자", "거래_완료_일자", 
+    "상품명", "단가", "총_주문_금액", "주문_상태"
 ]
 
-# 각 내부 필드에 대응하는 한글 문장형 라벨
-standard_labels = [
-    "고객 고유 번호", "고객 이름", "이메일 주소", "연락처", "가입 날짜",
-    "주문 고유 번호", "주문 날짜", "주문 상태", "총 결제 금액",
-    "결제 방식", "배송지 주소",
-    "상품 고유 번호", "상품 이름", "상품 카테고리", "상품 가격", "상품 수량",
-    "문의 고유 번호", "문의 유형", "문의 접수일", "문의 처리일", "문의 처리 상태"
+sales_labels = [
+    "주문 번호", "주문자 이름", "주문 일자", "거래 완료 일자",
+    "상품 이름", "상품 단가", "총 주문 금액", "주문 상태"
 ]
 
-# 룰 기반 매핑 사전 (각 내부 표준 필드에 해당하는 키워드 목록)
-rule_based_mapping = {
-    "name": ["고객명", "성명", "이름", "사용자명", "회원명"],
-    "email": ["이메일", "E-mail", "email", "메일주소", "이메일 주소"],
-    "contact": ["전화", "휴대폰", "연락처", "핸드폰", "폰번호", "모바일"],
-    "signup_date": ["가입", "등록일", "회원가입", "가입일", "가입 날짜", "등록일자"],
-    "order_id": ["주문번호", "거래 번호", "Order No.", "주문 ID", "주문 코드"],
-    "order_date": ["주문일", "결제일", "구매 날짜", "구매일자", "거래일자", "주문일자"],
-    "order_status": ["주문 상태", "배송 상태", "상태", "처리상태", "주문 진행", "진행상태"],
-    "total_price": ["총액", "결제금액", "주문금액", "구매총액", "총 결제", "결제 금액", "합계"],
-    "payment_method": ["결제 수단", "결제 방법", "결제 방식", "Payment", "지불 방식", "결제 유형"],
-    "shipping_address": ["주소", "배송 주소", "수령지", "배송지", "받는 주소"],
-    "product_id": ["제품 코드", "상품번호", "상품 코드", "제품ID", "SKU", "제품번호"],
-    "product_name": ["상품명", "제품명", "상품 이름", "판매 상품", "구매상품"],
-    "product_category": ["카테고리", "제품 분류", "분류", "상품종류", "상품 카테고리"],
-    "product_price": ["단가", "개당 가격", "상품 가격", "판매가", "가격"],
-    "quantity": ["수량", "구매 수량", "주문 수량", "판매 수량", "수량(개)"],
-    "inquiry_id": ["문의번호", "상담번호", "이슈번호"],
-    "inquiry_type": ["문의 유형", "이슈 유형", "문의 분류", "문의 내용", "이슈 타입"],
-    "inquiry_create": ["문의일자", "요청일", "접수일", "문의 날짜", "등록일자"],
-    "inquiry_finish": ["처리일자", "완료일", "답변일", "해결일"],
-    "inquiry_status": ["진행상태", "처리 상태", "응답상태", "문의 상태", "해결 여부"]
+# 고객 정보 시트 필드 정의
+customer_fields = [
+    "고객ID", "고객명", "연락처", "이메일", "가입일",
+    "마지막_구매일", "총_구매_금액", "총_구매_횟수", "탄소_감축_등급", "탄소_감축_점수"
+]
+
+customer_labels = [
+    "고객 고유 번호", "고객 이름", "연락처", "이메일 주소", "가입 날짜",
+    "마지막 구매 날짜", "총 구매 금액", "총 구매 횟수", "탄소 감축 등급", "탄소 감축 점수"
+]
+
+# 제품 판매 기록 룰 기반 매핑
+sales_rule_mapping = {
+    "주문_번호": ["주문번호", "거래 번호", "Order No.", "주문 ID", "주문 코드", "주문 번호", "order id", "order number"],
+    "주문자명": ["주문자", "주문자명", "고객명", "구매자", "고객 이름", "구매자명", "customer name", "buyer"],
+    "주문_일자": ["주문일", "주문 날짜", "주문일자", "구매일", "거래일", "order date", "purchase date"],
+    "거래_완료_일자": ["완료일", "거래완료일", "배송완료일", "처리완료일", "완료날짜", "delivery date", "completion date"],
+    "상품명": ["상품명", "제품명", "상품 이름", "제품 이름", "product name", "item name"],
+    "단가": ["단가", "가격", "상품가격", "판매가", "price", "unit price"],
+    "총_주문_금액": ["총액", "총 금액", "결제금액", "주문금액", "total amount", "order amount"],
+    "주문_상태": ["상태", "주문상태", "배송상태", "처리상태", "status", "order status"]
 }
 
-# 문장 임베딩 모델 로딩 (다국어 포함)
+# 고객 정보 룰 기반 매핑
+customer_rule_mapping = {
+    "고객ID": ["고객 ID", "고객번호", "customer id", "customer number", "고객 id", "ID", "id"],
+    "고객명": ["고객명", "성명", "이름", "사용자명", "회원명", "customer name", "name"],
+    "연락처": ["전화", "휴대폰", "연락처", "핸드폰", "폰번호", "모바일", "phone", "mobile"],
+    "이메일": ["이메일", "E-mail", "email", "e-mail", "메일주소", "이메일 주소"],
+    "가입일": ["가입일", "등록일", "회원가입", "가입 날짜", "등록일자", "signup date", "registration date"]
+}
+
+# 문장 임베딩 모델 로딩
 model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
-model.to('cpu')  # 명시적으로 CPU로 이동
+model.to('cpu')
 
 # 배치 크기 설정
 BATCH_SIZE = 8
 
-# 입력 및 표준 필드 벡터화 (배치 처리)
+# 입력 필드 벡터화
 input_vectors = []
 for i in range(0, len(input_columns), BATCH_SIZE):
     batch = input_columns[i:i + BATCH_SIZE]
     batch_vectors = model.encode(batch, show_progress_bar=False)
     input_vectors.extend(batch_vectors)
 
-# 표준 필드(한글 라벨) 벡터화
-standard_vectors = []
-for i in range(0, len(standard_labels), BATCH_SIZE):
-    batch = standard_labels[i:i + BATCH_SIZE]
-    batch_vectors = model.encode(batch, show_progress_bar=False)
-    standard_vectors.extend(batch_vectors)
+def find_best_match(input_col, input_vector, rule_mapping, target_labels, target_fields):
+    """룰 기반 매핑을 먼저 시도하고, 실패하면 AI 매핑을 수행"""
+    
+    # 1단계: 룰 기반 매핑
+    for field, keywords in rule_mapping.items():
+        if any(keyword.lower() in input_col.lower() for keyword in keywords):
+            return field, 1.0
+    
+    # 2단계: AI 임베딩 매핑
+    target_vectors = model.encode(target_labels, show_progress_bar=False)
+    similarities = cosine_similarity([input_vector], target_vectors)[0]
+    best_match_idx = np.argmax(similarities)
+    best_score = similarities[best_match_idx]
+    
+    # 임계값 확인
+    if best_score >= SIMILARITY_THRESHOLD:
+        return target_fields[best_match_idx], round(float(best_score), 4)
+    else:
+        return None, round(float(best_score), 4)
 
-# 매핑 수행 (룰 기반 우선 → AI 보조)
-mapping_results = {}
+def assign_unique_mappings(input_columns, input_vectors, rule_mapping, target_labels, target_fields):
+    """중복을 방지하며 최적의 매핑을 수행"""
+    mappings = {}
+    used_fields = set()
+    
+    # 1단계: 모든 가능한 매핑 수집
+    all_candidates = []
+    for i, input_col in enumerate(input_columns):
+        matched_field, score = find_best_match(
+            input_col, input_vectors[i], rule_mapping, target_labels, target_fields
+        )
+        if matched_field:
+            all_candidates.append((input_col, matched_field, score, i))
+    
+    # 2단계: 점수 순으로 정렬하여 최고 점수부터 할당
+    all_candidates.sort(key=lambda x: x[2], reverse=True)
+    
+    # 3단계: 중복 없이 할당
+    for input_col, matched_field, score, idx in all_candidates:
+        if matched_field not in used_fields:
+            mappings[input_col] = (matched_field, score)
+            used_fields.add(matched_field)
+        else:
+            mappings[input_col] = (None, score)
+    
+    # 4단계: 매핑되지 않은 필드들 추가
+    for input_col in input_columns:
+        if input_col not in mappings:
+            mappings[input_col] = (None, 0.0)
+    
+    return mappings
 
-for i, input_col in enumerate(input_columns):
-    matched = False
-    for field, keywords in rule_based_mapping.items():
-        if any(keyword in input_col for keyword in keywords):
-            mapping_results[input_col] = (field, 1.0)
-            matched = True
+# 제품 판매 기록 매핑
+print("\n📌 제품 판매 기록 시트 매핑 결과:")
+print("-" * 50)
+sales_mapping = assign_unique_mappings(
+    input_columns, input_vectors, sales_rule_mapping, sales_labels, sales_fields
+)
+
+for input_col, (matched_field, score) in sales_mapping.items():
+    status = "✅ 매핑됨" if matched_field else "❌ 매핑실패"
+    print(f"{input_col:20} →  {matched_field or '없음':20} (유사도: {score}) {status}")
+
+print("\n📌 고객 정보 시트 매핑 결과:")
+print("-" * 50)
+customer_mapping = assign_unique_mappings(
+    input_columns, input_vectors, customer_rule_mapping, customer_labels, customer_fields
+)
+
+for input_col, (matched_field, score) in customer_mapping.items():
+    status = "✅ 매핑됨" if matched_field else "❌ 매핑실패"
+    print(f"{input_col:20} →  {matched_field or '없음':20} (유사도: {score}) {status}")
+
+# 최종 매핑 결과 요약
+print("\n" + "="*60)
+print("📋 최종 매핑 요약")
+print("="*60)
+
+print("\n🛒 제품 판매 기록 시트:")
+sales_result = {}
+for field in sales_fields:
+    mapped_from = None
+    for input_col, (mapped_field, score) in sales_mapping.items():
+        if mapped_field == field:
+            mapped_from = input_col
             break
-    if not matched:
-        similarities = cosine_similarity([input_vectors[i]], standard_vectors)[0]
-        best_match_idx = np.argmax(similarities)
-        predicted_field = standard_fields[best_match_idx]  # 내부 필드로 저장
-        score = similarities[best_match_idx]
-        mapping_results[input_col] = (predicted_field, round(float(score), 4))
+    sales_result[field] = mapped_from
+    print(f"  {field:20} ← {mapped_from or '(빈 컬럼)'}")
 
-# 결과 출력
-print("\n📌 필드 매핑 결과:")
-print("-" * 40)
-for input_col, (predicted, score) in mapping_results.items():
-    print(f"{input_col:20} →  {predicted:20} (유사도: {score})")
+print("\n👥 고객 정보 시트:")
+customer_result = {}
+for field in customer_fields:
+    mapped_from = None
+    for input_col, (mapped_field, score) in customer_mapping.items():
+        if mapped_field == field:
+            mapped_from = input_col
+            break
+    customer_result[field] = mapped_from
+    # 계산용 필드는 항상 빈 상태로 표시
+    if field in ["마지막_구매일", "총_구매_금액", "총_구매_횟수", "탄소_감축_등급", "탄소_감축_점수"]:
+        print(f"  {field:20} ← (계산용 빈 컬럼)")
+    else:
+        print(f"  {field:20} ← {mapped_from or '(빈 컬럼)'}")
+
+# 예외 처리 규칙 안내
+print("\n⚠️  예외 처리 규칙:")
+if not sales_result.get("거래_완료_일자"):
+    print("  - 거래 완료 일자: 주문 일자 + 3일로 자동 계산")
+if not sales_result.get("주문_상태"):
+    print("  - 주문 상태: '거래 완료'로 기본값 설정")
+
+print(f"\n📊 매핑 통계:")
+sales_mapped = sum(1 for field, source in sales_result.items() if source is not None)
+customer_mapped = sum(1 for field, source in customer_result.items() 
+                     if source is not None and field not in ["마지막_구매일", "총_구매_금액", "총_구매_횟수", "탄소_감축_등급", "탄소_감축_점수"])
+
+print(f"  제품 판매 기록: {sales_mapped}/{len(sales_fields)} 필드 매핑됨")
+print(f"  고객 정보: {customer_mapped}/{len(customer_fields)-5} 필드 매핑됨 (5개 계산용 필드 제외)")

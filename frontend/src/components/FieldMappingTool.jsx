@@ -79,30 +79,97 @@ const FieldMappingTool = ({ sheet, onMapComplete }) => {
 
   // 결과 표시
   const renderMappingResults = () => {
-    if (!mappingResult || !mappingResult.mappingData) return null;
+    if (!mappingResult) return null;
 
     return (
       <div className="mapping-results">
         <h3>필드 매핑 결과</h3>
         <p className="success-message">{mappingResult.message}</p>
-        <table>
-          <thead>
-            <tr>
-              <th>원본 필드</th>
-              <th>표준 필드</th>
-              <th>매칭 점수</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mappingResult.mappingData.map((item, index) => (
-              <tr key={index}>
-                <td>{item.originalField}</td>
-                <td>{item.standardField}</td>
-                <td>{item.score.toFixed(2)}</td>
+        
+        {/* 제품 판매 기록 시트 매핑 결과 */}
+        <div className="mapping-section">
+          <h4>🛒 제품 판매 기록 시트</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>원본 필드</th>
+                <th>매핑된 필드</th>
+                <th>상태</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {Object.entries(mappingResult.salesMapping || {}).map(([originalField, mappedField], index) => (
+                <tr key={index}>
+                  <td>{originalField}</td>
+                  <td>{mappedField || '매핑 없음'}</td>
+                  <td>
+                    <span className={mappedField ? 'status-success' : 'status-failed'}>
+                      {mappedField ? '✅ 성공' : '❌ 실패'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 고객 정보 시트 매핑 결과 */}
+        <div className="mapping-section">
+          <h4>👥 고객 정보 시트</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>원본 필드</th>
+                <th>매핑된 필드</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(mappingResult.customerMapping || {}).map(([originalField, mappedField], index) => (
+                <tr key={index}>
+                  <td>{originalField}</td>
+                  <td>{mappedField || '매핑 없음'}</td>
+                  <td>
+                    <span className={mappedField ? 'status-success' : 'status-failed'}>
+                      {mappedField ? '✅ 성공' : '❌ 실패'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 생성된 시트 정보 */}
+        <div className="created-sheets">
+          <h4>📊 생성된 시트</h4>
+          <div className="sheet-info">
+            <div className="sheet-item">
+              <span className="sheet-icon">🛒</span>
+              <span className="sheet-name">{mappingResult.salesSheetName}</span>
+              <span className="sheet-description">제품 판매 기록 및 주문 정보</span>
+            </div>
+            <div className="sheet-item">
+              <span className="sheet-icon">👥</span>
+              <span className="sheet-name">{mappingResult.customerSheetName}</span>
+              <span className="sheet-description">고객 기본 정보 (중복 제거됨)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 특별 처리 안내 */}
+        <div className="special-processing">
+          <h4>⚠️ 특별 처리 사항</h4>
+          <ul>
+            <li><strong>거래 완료 일자:</strong> 매핑되지 않은 경우 주문 일자 + 3일로 자동 계산</li>
+            <li><strong>주문 상태:</strong> 매핑되지 않은 경우 '거래 완료'로 기본값 설정</li>
+            <li><strong>고객 정보:</strong> 중복된 고객은 자동으로 제거됨</li>
+            <li><strong>총 구매 금액:</strong> 제품 판매 기록을 기반으로 고객별로 자동 계산됨</li>
+            <li><strong>총 구매 횟수:</strong> 제품 판매 기록을 기반으로 고객별로 자동 계산됨</li>
+            <li><strong>마지막 구매일:</strong> 제품 판매 기록에서 가장 최근 주문 일자로 자동 설정됨</li>
+            <li><strong>탄소 감축 등급/점수:</strong> 현재는 빈 상태로 생성됨 (향후 계산 기능 추가 예정)</li>
+          </ul>
+        </div>
       </div>
     );
   };
@@ -158,8 +225,14 @@ const FieldMappingTool = ({ sheet, onMapComplete }) => {
 
       {mappingResult && (
         <div className="post-mapping-actions">
-          <p>새 시트 '{mappingResult.newSheetName}'가 생성되었습니다.</p>
-          <p>이제 이 시트에서 작업을 계속할 수 있습니다.</p>
+          <p>
+            <strong>'{mappingResult.salesSheetName}'</strong>
+            {mappingResult.salesSheetExists ? ' (업데이트됨)' : ' (새로 생성됨)'}
+            과 <strong>'{mappingResult.customerSheetName}'</strong>
+            {mappingResult.customerSheetExists ? ' (업데이트됨)' : ' (새로 생성됨)'}
+            {' '}작업이 성공적으로 완료되었습니다.
+          </p>
+          <p>이제 생성된 시트에서 데이터 분석 및 관리 작업을 진행할 수 있습니다.</p>
         </div>
       )}
     </div>
