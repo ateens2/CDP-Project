@@ -926,12 +926,12 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
     
     // 탄소 감축 등급 계산 함수
     function getCarbonGrade(score) {
-      if (score < 0) return '브론즈';
-      if (score < 200) return '브론즈';
-      if (score < 500) return '실버';
-      if (score < 1000) return '골드';
-      if (score < 3000) return '플래티넘';
-      return '다이아몬드';
+      if (score <= 0) return 'Stone';
+      if (score < 200) return 'Bronze';
+      if (score < 500) return 'Silver';
+      if (score < 1000) return 'Gold';
+      if (score < 3000) return 'Platinum';
+      return 'Diamond';
     }
     
     // 고객 시트 업데이트 준비
