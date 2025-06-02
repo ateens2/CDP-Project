@@ -1,187 +1,414 @@
-import React, { useEffect, useRef, useState, useContext } from "react";
-import { useLocation } from "react-router-dom";
-import Category from "../components/Category";
-import Header from "../components/Header";
+// src/pages/DataAnalytics.jsx
+
+import React, { useEffect, useState, useContext, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import Chart from "chart.js/auto";
+import Header from "../components/Header";
+import Category from "../components/Category";
 import { UserContext } from "../contexts/UserContext";
 import "./DataAnalytics.css";
 
+// 날짜 문자열 "YYYY-MM-DD"를 Date 객체로 변환
+function parseDate(dateStr) {
+  const [y, m, d] = dateStr.split("-").map((v) => parseInt(v, 10));
+  return new Date(y, m - 1, d);
+}
+
+// 일별 매출 집계
+function aggregateDaily(rows) {
+  const bucket = {};
+  rows.forEach(({ date, amount }) => {
+    const key = date.toISOString().slice(0, 10);
+    bucket[key] = (bucket[key] || 0) + amount;
+  });
+  const labels = Object.keys(bucket).sort();
+  const values = labels.map((k) => bucket[k]);
+  return { labels, values };
+}
+
+// ISO 주차 구하기 헬퍼
+function getISOWeek(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const weekNum = Math.ceil(((date - yearStart) / 86400000 + 1) / 7);
+  return { year: date.getUTCFullYear(), week: weekNum };
+}
+
+// 주별 매출 집계
+function aggregateWeekly(rows) {
+  const bucket = {};
+  rows.forEach(({ date, amount }) => {
+    const { year, week } = getISOWeek(date);
+    const key = `${year}-W${week.toString().padStart(2, "0")}`;
+    bucket[key] = (bucket[key] || 0) + amount;
+  });
+  const labels = Object.keys(bucket).sort();
+  const values = labels.map((k) => bucket[k]);
+  return { labels, values };
+}
+
+// 월별 매출 집계
+function aggregateMonthly(rows) {
+  const bucket = {};
+  rows.forEach(({ date, amount }) => {
+    const y = date.getFullYear();
+    const m = (date.getMonth() + 1).toString().padStart(2, "0");
+    const key = `${y}-${m}`;
+    bucket[key] = (bucket[key] || 0) + amount;
+  });
+  const labels = Object.keys(bucket).sort();
+  const values = labels.map((k) => bucket[k]);
+  return { labels, values };
+}
+
+// 분기별 매출 집계
+function aggregateQuarterly(rows) {
+  const bucket = {};
+  rows.forEach(({ date, amount }) => {
+    const y = date.getFullYear();
+    const q = Math.ceil((date.getMonth() + 1) / 3);
+    const key = `${y}-Q${q}`;
+    bucket[key] = (bucket[key] || 0) + amount;
+  });
+  const labels = Object.keys(bucket).sort();
+  const values = labels.map((k) => bucket[k]);
+  return { labels, values };
+}
+
+// 연간 매출 집계
+function aggregateYearly(rows) {
+  const bucket = {};
+  rows.forEach(({ date, amount }) => {
+    const y = date.getFullYear().toString();
+    bucket[y] = (bucket[y] || 0) + amount;
+  });
+  const labels = Object.keys(bucket).sort();
+  const values = labels.map((k) => bucket[k]);
+  return { labels, values };
+}
+
 const DataAnalytics = () => {
-  // location과 UserContext 추가
+  const { sheets } = useContext(UserContext);
   const { state } = useLocation();
-  const sheet = state?.sheet;
-  const { user, sheets } = useContext(UserContext);
+  // Category나 Workspace에서 넘겨받은 sheet, 없으면 Context.sheets[0]로 fallback
+  const sheet =
+    state?.sheet || (sheets && sheets.length > 0 ? sheets[0] : null);
 
-  // 시트 정보 상태 추가
-  const [sheetData, setSheetData] = useState(null);
+  const [parsedRows, setParsedRows] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // 차트용 ref 선언
   const revenueChartRef = useRef(null);
-  const segmentChartRef = useRef(null);
-  const productChartRef = useRef(null);
-  const acquisitionChartRef = useRef(null);
-
-  // 차트 인스턴스 저장 refs
   const revenueChartInstance = useRef(null);
+  const segmentChartRef = useRef(null);
   const segmentChartInstance = useRef(null);
+  const productChartRef = useRef(null);
   const productChartInstance = useRef(null);
-  const acquisitionChartInstance = useRef(null);
+  const acqChartRef = useRef(null);
+  const acqChartInstance = useRef(null);
 
-  // 활성 탭 상태 관리
-  const [activeTab, setActiveTab] = useState("매출 분석");
   const [activeTimeRange, setActiveTimeRange] = useState("월별");
 
+  // 요약 정보 상태
+  const [summary, setSummary] = useState({
+    monthlyTotal: 0,
+    monthlyPrev: 0,
+    newContractTotal: 0,
+    newContractPrev: 0,
+    avgContract: 0,
+    avgContractPrev: 0,
+    annualEstimate: 0,
+    ytdLastYear: 0,
+  });
+
+  // ───────────────────────────────────────────────────────────
+  // 1) 시트 데이터 로딩 (B2:H) 및 parsedRows 세팅
+  // ───────────────────────────────────────────────────────────
   useEffect(() => {
-    // 시트 데이터 로드
     const loadSheetData = async () => {
       if (!sheet || !window.gapi?.client) return;
+      setIsLoading(true);
 
       try {
         await window.gapi.client.load("sheets", "v4");
-        const meta = await window.gapi.client.sheets.spreadsheets.get({
-          spreadsheetId: sheet.sheetId,
-        });
+        const rangeName = `'제품_판매_기록'!B2:H`;
+        const response =
+          await window.gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: sheet.sheetId,
+            range: rangeName,
+          });
+        const values = response.result.values || [];
 
-        // 시트 정보 설정
-        setSheetData({
-          id: sheet.sheetId,
-          title: sheet.name,
-          meta: meta.result,
-        });
+        const rows = values
+          .map((row) => {
+            const customerName = row[0]; // B열
+            const dateStr = row[2]; // D열
+            const amountStr = row[5]; // H열
+            if (!customerName || !dateStr || !amountStr) return null;
+            const date = parseDate(dateStr);
+            const amount = Number(amountStr.replace(/[,₩\s]/g, "")) || 0;
+            return { date, amount, customerName };
+          })
+          .filter((r) => r !== null);
 
-        console.log("시트 데이터 로드 완료:", sheet.name);
-      } catch (error) {
-        console.error("시트 데이터 로드 오류:", error);
+        setParsedRows(rows);
+      } catch (err) {
+        console.error("시트 로딩 오류:", err);
+        setIsLoading(false);
       }
     };
 
-    // 시트 정보가 있으면 로드
     if (sheet) {
       loadSheetData();
-    } else if (sheets && sheets.length > 0) {
-      // UserContext에서 시트 정보 활용
-      setSheetData({
-        id: sheets[0].sheetId,
-        title: sheets[0].name,
-      });
     }
 
-    // 기존 차트 인스턴스 정리
+    return () => {
+      // 언마운트 시 차트 인스턴스 정리
+      [
+        revenueChartInstance,
+        segmentChartInstance,
+        productChartInstance,
+        acqChartInstance,
+      ].forEach((ref) => {
+        if (ref.current) {
+          ref.current.destroy();
+          ref.current = null;
+        }
+      });
+    };
+  }, [sheet, sheets]);
+
+  // ───────────────────────────────────────────────────────────
+  // 2) parsedRows 변화 시 요약(summary) 계산 후 isLoading 해제
+  // ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (parsedRows.length === 0) {
+      setIsLoading(false);
+      return;
+    }
+
+    const today = new Date();
+    const thisYear = today.getFullYear();
+    const thisMonth = today.getMonth();
+
+    // 이번 달 총 매출
+    const rowsThisMonth = parsedRows.filter(
+      ({ date }) =>
+        date.getFullYear() === thisYear && date.getMonth() === thisMonth
+    );
+    const monthlyTotal = rowsThisMonth.reduce(
+      (sum, { amount }) => sum + amount,
+      0
+    );
+
+    // 전월 총 매출
+    const rowsPrevMonth = parsedRows.filter(({ date }) => {
+      const y = date.getFullYear();
+      const m = date.getMonth();
+      if (thisMonth === 0) {
+        return y === thisYear - 1 && m === 11;
+      }
+      return y === thisYear && m === thisMonth - 1;
+    });
+    const monthlyPrev = rowsPrevMonth.reduce(
+      (sum, { amount }) => sum + amount,
+      0
+    );
+
+    // 고객별 첫 구매일 계산
+    const firstPurchase = {};
+    parsedRows.forEach(({ date, customerName }) => {
+      if (!firstPurchase[customerName] || date < firstPurchase[customerName]) {
+        firstPurchase[customerName] = date;
+      }
+    });
+
+    // 이번 달 신규 계약 고객 리스트
+    const newCustomersThisMonth = Object.entries(firstPurchase)
+      .filter(
+        ([_, dt]) =>
+          dt.getFullYear() === thisYear && dt.getMonth() === thisMonth
+      )
+      .map(([cust]) => cust);
+
+    // 이번 달 신규 계약 매출 합
+    const newContractTotal = parsedRows
+      .filter(
+        ({ date, customerName }) =>
+          newCustomersThisMonth.includes(customerName) &&
+          date.getFullYear() === thisYear &&
+          date.getMonth() === thisMonth
+      )
+      .reduce((sum, { amount }) => sum + amount, 0);
+
+    // 전월 신규 계약 고객 리스트
+    const newCustomersPrevMonth = Object.entries(firstPurchase)
+      .filter(([_, dt]) => {
+        if (thisMonth === 0) {
+          return dt.getFullYear() === thisYear - 1 && dt.getMonth() === 11;
+        }
+        return dt.getFullYear() === thisYear && dt.getMonth() === thisMonth - 1;
+      })
+      .map(([cust]) => cust);
+
+    // 전월 신규 계약 매출 합
+    const newContractPrev = parsedRows
+      .filter(({ date, customerName }) => {
+        const y = date.getFullYear();
+        const m = date.getMonth();
+        if (thisMonth === 0) {
+          return (
+            y === thisYear - 1 &&
+            m === 11 &&
+            newCustomersPrevMonth.includes(customerName)
+          );
+        }
+        return (
+          y === thisYear &&
+          m === thisMonth - 1 &&
+          newCustomersPrevMonth.includes(customerName)
+        );
+      })
+      .reduce((sum, { amount }) => sum + amount, 0);
+
+    // 이번 달 평균 계약 금액 (건당)
+    const avgContract = rowsThisMonth.length
+      ? Math.round(monthlyTotal / rowsThisMonth.length)
+      : 0;
+
+    // 전월 평균 계약 금액
+    const avgContractPrev = rowsPrevMonth.length
+      ? Math.round(monthlyPrev / rowsPrevMonth.length)
+      : 0;
+
+    // 올해 누적(YTD) 매출
+    const rowsThisYear = parsedRows.filter(
+      ({ date }) => date.getFullYear() === thisYear
+    );
+    const ytdTotal = rowsThisYear.reduce((sum, { amount }) => sum + amount, 0);
+    const monthsElapsed = thisMonth + 1;
+    // 연간 예상 매출
+    const annualEstimate = monthsElapsed
+      ? Math.round((ytdTotal / monthsElapsed) * 12)
+      : 0;
+
+    // 작년 동기(YTD) 매출
+    const rowsLastYearToDate = parsedRows.filter(
+      ({ date }) =>
+        date.getFullYear() === thisYear - 1 && date.getMonth() <= thisMonth
+    );
+    const ytdLastYear = rowsLastYearToDate.reduce(
+      (sum, { amount }) => sum + amount,
+      0
+    );
+
+    setSummary({
+      monthlyTotal,
+      monthlyPrev,
+      newContractTotal,
+      newContractPrev,
+      avgContract,
+      avgContractPrev,
+      annualEstimate,
+      ytdLastYear,
+    });
+
+    setIsLoading(false);
+  }, [parsedRows]);
+
+  // ───────────────────────────────────────────────────────────
+  // 3) 매출 추이(Line) 차트 초기화
+  // ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!revenueChartRef.current || !parsedRows.length) return;
     if (revenueChartInstance.current) {
       revenueChartInstance.current.destroy();
       revenueChartInstance.current = null;
     }
-    if (segmentChartInstance.current) {
-      segmentChartInstance.current.destroy();
-      segmentChartInstance.current = null;
-    }
-    if (productChartInstance.current) {
-      productChartInstance.current.destroy();
-      productChartInstance.current = null;
-    }
-    if (acquisitionChartInstance.current) {
-      acquisitionChartInstance.current.destroy();
-      acquisitionChartInstance.current = null;
-    }
-
-    // 1. 매출 트렌드 차트
-    if (revenueChartRef.current) {
-      const ctx = revenueChartRef.current.getContext("2d");
-
-      // 캔버스 기본 스타일 설정
-      ctx.canvas.style.backgroundColor = "white";
-      ctx.canvas.style.width = "100%";
-      ctx.canvas.style.height = "100%";
-
-      revenueChartInstance.current = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: [
-            "1월",
-            "2월",
-            "3월",
-            "4월",
-            "5월",
-            "6월",
-            "7월",
-            "8월",
-            "9월",
-            "10월",
-            "11월",
-            "12월",
-          ],
-          datasets: [
-            {
-              label: "실제 매출",
-              data: [
-                320, 350, 390, 410, 450, 480, 510, 520, 480, 430, 410, 450,
-              ],
-              borderColor: "#3b82f6",
-              backgroundColor: "rgba(59,130,246,0.1)",
-              tension: 0.3,
-              fill: true,
-            },
-            {
-              label: "예상 매출",
-              data: [
-                330, 360, 370, 400, 440, 470, 500, 530, 490, 450, 430, 460,
-              ],
-              borderColor: "#93c5fd",
-              borderDash: [5, 5],
-              tension: 0.3,
-              fill: false,
-            },
-            {
-              label: "전년 동기",
-              data: [
-                280, 310, 340, 370, 380, 410, 430, 450, 420, 390, 380, 400,
-              ],
-              borderColor: "#10b981",
-              tension: 0.3,
-              fill: false,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
+    const ctx = revenueChartRef.current.getContext("2d");
+    revenueChartInstance.current = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: "총 매출",
+            data: [],
+            borderColor: "#3b82f6",
+            backgroundColor: "rgba(59,130,246,0.1)",
+            tension: 0.3,
+            fill: true,
           },
-          scales: {
-            y: {
-              beginAtZero: false,
-              title: { display: true, text: "매출 (백만원)" },
-            },
-          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { mode: "index", intersect: false },
         },
-      });
-    }
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: "매출 (원)" } },
+        },
+      },
+    });
+  }, [parsedRows]);
 
-    // 2. 고객 세그먼트별 매출 (도넛)
+  // ───────────────────────────────────────────────────────────
+  // 4) activeTimeRange 변경 시 매출 차트 업데이트
+  // ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!revenueChartInstance.current || !parsedRows.length) return;
+    const salesData = parsedRows.map(({ date, amount }) => ({ date, amount }));
+    let agg;
+    switch (activeTimeRange) {
+      case "일별":
+        agg = aggregateDaily(salesData);
+        break;
+      case "주별":
+        agg = aggregateWeekly(salesData);
+        break;
+      case "월별":
+        agg = aggregateMonthly(salesData);
+        break;
+      case "분기별":
+        agg = aggregateQuarterly(salesData);
+        break;
+      case "연간":
+        agg = aggregateYearly(salesData);
+        break;
+      default:
+        agg = aggregateMonthly(salesData);
+    }
+    const chart = revenueChartInstance.current;
+    chart.data.labels = agg.labels;
+    chart.data.datasets[0].data = agg.values;
+    chart.update();
+  }, [activeTimeRange, parsedRows]);
+
+  // ───────────────────────────────────────────────────────────
+  // 5) 고객 세그먼트·제품 유형·획득/이탈 차트 (더미 데이터)
+  // ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    // 고객 세그먼트 Pie
     if (segmentChartRef.current) {
+      if (segmentChartInstance.current) {
+        segmentChartInstance.current.destroy();
+        segmentChartInstance.current = null;
+      }
       const ctx = segmentChartRef.current.getContext("2d");
-
-      // 캔버스 기본 스타일 설정
       ctx.canvas.style.backgroundColor = "white";
-      ctx.canvas.style.width = "100%";
-      ctx.canvas.style.height = "100%";
-
       segmentChartInstance.current = new Chart(ctx, {
-        type: "doughnut",
+        type: "pie",
         data: {
-          labels: ["대기업", "중견기업", "중소기업", "스타트업", "공공기관"],
+          labels: ["VIP", "일반", "신규"],
           datasets: [
             {
-              data: [35, 25, 20, 15, 5],
-              backgroundColor: [
-                "#3b82f6",
-                "#60a5fa",
-                "#93c5fd",
-                "#bfdbfe",
-                "#dbeafe",
-              ],
-              borderWidth: 1,
+              label: "고객 세그먼트별 매출",
+              data: [450000, 300000, 150000],
+              backgroundColor: ["#3b82f6", "#10b981", "#f59e0b"],
             },
           ],
         },
@@ -189,113 +416,81 @@ const DataAnalytics = () => {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { position: "right" },
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.label}: ₩${ctx.parsed.toLocaleString()}`,
+              },
+            },
           },
         },
       });
     }
 
-    // 3. 제품 유형별 매출 (바 차트)
+    // 제품 유형 Pie
     if (productChartRef.current) {
+      if (productChartInstance.current) {
+        productChartInstance.current.destroy();
+        productChartInstance.current = null;
+      }
       const ctx = productChartRef.current.getContext("2d");
-
-      // 캔버스 기본 스타일 설정
       ctx.canvas.style.backgroundColor = "white";
-      ctx.canvas.style.width = "100%";
-      ctx.canvas.style.height = "100%";
-
       productChartInstance.current = new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels: ["전자제품", "의류", "식료품"],
+          datasets: [
+            {
+              label: "제품 유형별 매출",
+              data: [500000, 250000, 200000],
+              backgroundColor: ["#6366F1", "#EC4899", "#F43F5E"],
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.label}: ₩${ctx.parsed.toLocaleString()}`,
+              },
+            },
+          },
+        },
+      });
+    }
+
+    // 획득/이탈 Bar
+    if (acqChartRef.current) {
+      if (acqChartInstance.current) {
+        acqChartInstance.current.destroy();
+        acqChartInstance.current = null;
+      }
+      const ctx = acqChartRef.current.getContext("2d");
+      ctx.canvas.style.backgroundColor = "white";
+      acqChartInstance.current = new Chart(ctx, {
         type: "bar",
         data: {
-          labels: [
-            "SaaS 기본형",
-            "SaaS 프리미엄",
-            "CSAP 스탠다드",
-            "CSAP 엔터프라이즈",
-            "컨설팅 서비스",
-          ],
+          labels: ["2025-01", "2025-02", "2025-03", "2025-04", "2025-05"],
           datasets: [
             {
-              label: "매출 비중",
-              data: [25, 32, 18, 15, 10],
-              backgroundColor: [
-                "#3b82f6",
-                "#60a5fa",
-                "#93c5fd",
-                "#bfdbfe",
-                "#dbeafe",
-              ],
-              borderWidth: 1,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              title: { display: true, text: "매출 비중 (%)" },
-            },
-          },
-        },
-      });
-    }
-
-    // 4. 고객 획득 및 이탈 차트
-    if (acquisitionChartRef.current) {
-      const ctx = acquisitionChartRef.current.getContext("2d");
-
-      // 캔버스 기본 스타일 설정
-      ctx.canvas.style.backgroundColor = "white";
-      ctx.canvas.style.width = "100%";
-      ctx.canvas.style.height = "100%";
-
-      acquisitionChartInstance.current = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: [
-            "1월",
-            "2월",
-            "3월",
-            "4월",
-            "5월",
-            "6월",
-            "7월",
-            "8월",
-            "9월",
-            "10월",
-            "11월",
-            "12월",
-          ],
-          datasets: [
-            {
-              label: "신규 고객",
-              data: [12, 15, 18, 21, 19, 22, 25, 28, 24, 20, 22, 26],
-              borderColor: "#10b981",
-              backgroundColor: "rgba(16,185,129,0.1)",
-              tension: 0.3,
-              fill: true,
+              label: "신규 고객(획득)",
+              data: [5, 8, 6, 10, 7],
+              backgroundColor: "#10B981",
             },
             {
               label: "이탈 고객",
-              data: [5, 6, 4, 7, 8, 10, 7, 6, 5, 9, 8, 7],
-              borderColor: "#ef4444",
-              backgroundColor: "rgba(239,68,68,0.1)",
-              tension: 0.3,
-              fill: true,
+              data: [1, 2, 3, 1, 2],
+              backgroundColor: "#EF4444",
             },
           ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: { position: "top" },
-          },
+          interaction: { mode: "index", intersect: false },
           scales: {
             y: {
               beginAtZero: true,
@@ -305,323 +500,201 @@ const DataAnalytics = () => {
         },
       });
     }
+  }, [parsedRows]);
 
-    // 컴포넌트 언마운트 시 차트 인스턴스 정리
-    return () => {
-      if (revenueChartInstance.current) {
-        revenueChartInstance.current.destroy();
-        revenueChartInstance.current = null;
-      }
-      if (segmentChartInstance.current) {
-        segmentChartInstance.current.destroy();
-        segmentChartInstance.current = null;
-      }
-      if (productChartInstance.current) {
-        productChartInstance.current.destroy();
-        productChartInstance.current = null;
-      }
-      if (acquisitionChartInstance.current) {
-        acquisitionChartInstance.current.destroy();
-        acquisitionChartInstance.current = null;
-      }
-    };
-  }, [sheet, sheets]);
-
-  // 시간 범위 변경 시 차트 업데이트
-  useEffect(() => {
-    // 예시 데이터 - 실제 구현에서는 API 요청이나 다른 데이터 소스에서 가져올 수 있음
-    const timeRangeData = {
-      월별: {
-        revenue: [320, 350, 390, 410, 450, 480, 510, 520, 480, 430, 410, 450],
-        expected: [330, 360, 370, 400, 440, 470, 500, 530, 490, 450, 430, 460],
-        lastYear: [280, 310, 340, 370, 380, 410, 430, 450, 420, 390, 380, 400],
-        labels: [
-          "1월",
-          "2월",
-          "3월",
-          "4월",
-          "5월",
-          "6월",
-          "7월",
-          "8월",
-          "9월",
-          "10월",
-          "11월",
-          "12월",
-        ],
-      },
-      분기별: {
-        revenue: [1060, 1440, 1510, 1290],
-        expected: [1060, 1410, 1520, 1340],
-        lastYear: [930, 1220, 1300, 1170],
-        labels: ["1분기", "2분기", "3분기", "4분기"],
-      },
-      연간: {
-        revenue: [4200, 4800, 5300, 5800, 6300],
-        expected: [4300, 4900, 5400, 5900, 6500],
-        lastYear: [3900, 4300, 4700, 5200, 5800],
-        labels: ["2020년", "2021년", "2022년", "2023년", "2024년(예상)"],
-      },
-    };
-
-    // 차트 인스턴스가 존재하면 데이터 업데이트
-    if (revenueChartInstance.current) {
-      const data = timeRangeData[activeTimeRange];
-      const chart = revenueChartInstance.current;
-
-      // 데이터 및 라벨 업데이트
-      chart.data.labels = data.labels;
-      chart.data.datasets[0].data = data.revenue;
-      chart.data.datasets[1].data = data.expected;
-      chart.data.datasets[2].data = data.lastYear;
-
-      // 차트 갱신
-      chart.update();
-    }
-  }, [activeTimeRange]);
-
-  const handleTabClick = (tab) => {
-    setActiveTab(tab);
-  };
-
-  const handleTimeRangeClick = (range) => {
-    setActiveTimeRange(range);
-  };
-
+  // ───────────────────────────────────────────────────────────
+  // JSX 렌더링
+  // ───────────────────────────────────────────────────────────
   return (
-    <div>
-      <Header />
+    <div className="data-analytics-page">
+      <Header sheet={sheet} />
+
       <div className="data-analytics-container">
         <div className="content-area">
-          <div className="category-section">
-            <Category sheet={sheet} />
-          </div>
           <div className="customer-list-section">
-            <h1 className="workspace-title">매출 분석</h1>
+            <h1 className="workspace-title">매출 및 고객/제품 분석</h1>
 
-            {/* 타임 레인지 필터 */}
-            <div className="data-analytics-time-range-tabs">
-              <button
-                className={`data-analytics-tab-button ${
-                  activeTimeRange === "일별" ? "active" : ""
-                }`}
-              >
-                일별
-              </button>
-              <button
-                className={`data-analytics-tab-button ${
-                  activeTimeRange === "주별" ? "active" : ""
-                }`}
-              >
-                주별
-              </button>
-              <button
-                className={`data-analytics-tab-button ${
-                  activeTimeRange === "월별" ? "active" : ""
-                }`}
-              >
-                월별
-              </button>
-              <button
-                className={`data-analytics-tab-button ${
-                  activeTimeRange === "분기별" ? "active" : ""
-                }`}
-              >
-                분기별
-              </button>
-              <button
-                className={`data-analytics-tab-button ${
-                  activeTimeRange === "연간" ? "active" : ""
-                }`}
-              >
-                연간
-              </button>
-            </div>
+            {/* (A) 로딩 중 스피너 오버레이 */}
+            {isLoading && (
+              <div className="loading-message">
+                <i className="fas fa-spinner fa-spin"></i>
+                <p>매출 분석중...</p>
+              </div>
+            )}
 
-            {/* 메트릭 카드 */}
-            <div className="data-analytics-metrics-grid">
-              <div className="data-analytics-metric-card">
-                <div className="data-analytics-metric-title">총 매출</div>
-                <div className="data-analytics-metric-value">4,800만원</div>
-                <div className="data-analytics-metric-trend data-analytics-trend-up">
-                  <i className="fas fa-arrow-up"></i> 12.5% 상승
-                </div>
-              </div>
-              <div className="data-analytics-metric-card">
-                <div className="data-analytics-metric-title">
-                  평균 거래 금액
-                </div>
-                <div className="data-analytics-metric-value">120만원</div>
-                <div className="data-analytics-metric-trend data-analytics-trend-up">
-                  <i className="fas fa-arrow-up"></i> 5.2% 상승
-                </div>
-              </div>
-              <div className="data-analytics-metric-card">
-                <div className="data-analytics-metric-title">신규 고객 수</div>
-                <div className="data-analytics-metric-value">24</div>
-                <div className="data-analytics-metric-trend data-analytics-trend-up">
-                  <i className="fas fa-arrow-up"></i> 8.7% 상승
-                </div>
-              </div>
-              <div className="data-analytics-metric-card">
-                <div className="data-analytics-metric-title">고객 이탈율</div>
-                <div className="data-analytics-metric-value">2.3%</div>
-                <div className="data-analytics-metric-trend data-analytics-trend-down">
-                  <i className="fas fa-arrow-down"></i> 1.1% 감소
-                </div>
-              </div>
-            </div>
-
-            {/* 차트 섹션 */}
-            <div className="data-analytics-dashboard-card">
-              <div className="data-analytics-card-header">
-                <h3>월별 매출 추이</h3>
-              </div>
-              <div className="data-analytics-chart-container">
-                <canvas ref={revenueChartRef}></canvas>
-                <div className="data-analytics-chart-legend">
-                  <div className="data-analytics-legend-item">
-                    <div className="data-analytics-legend-dot data-analytics-bg-blue-500"></div>
-                    <span className="data-analytics-legend-text">
-                      실제 매출
-                    </span>
+            {/* (B) 요약 카드 */}
+            {!isLoading && (
+              <div className="summary-cards">
+                {/* 월간 총 매출 */}
+                <div className="summary-card">
+                  <div className="card-title">월간 총 매출</div>
+                  <div className="card-value">
+                    ₩{summary.monthlyTotal.toLocaleString()}
                   </div>
-                  <div className="data-analytics-legend-item">
-                    <div className="data-analytics-legend-dot data-analytics-bg-blue-300"></div>
-                    <span className="data-analytics-legend-text">
-                      예상 매출
-                    </span>
-                  </div>
-                  <div className="data-analytics-legend-item">
-                    <div className="data-analytics-legend-dot data-analytics-bg-green-500"></div>
-                    <span className="data-analytics-legend-text">
-                      전년 동기
-                    </span>
+                  <div
+                    className={`card-change ${
+                      summary.monthlyTotal - summary.monthlyPrev >= 0
+                        ? "up"
+                        : "down"
+                    }`}
+                  >
+                    {summary.monthlyTotal - summary.monthlyPrev >= 0
+                      ? "▲ "
+                      : "▼ "}
+                    {summary.monthlyPrev
+                      ? Math.abs(
+                          ((summary.monthlyTotal - summary.monthlyPrev) /
+                            summary.monthlyPrev) *
+                            100
+                        ).toFixed(1)
+                      : 0}
+                    % 지난달 대비
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* 세그먼트별 매출 */}
-            <div className="data-analytics-segment-grid">
-              <div className="data-analytics-dashboard-card">
-                <div className="data-analytics-card-header">
-                  <h3>고객 세그먼트별 매출</h3>
-                </div>
-                <div className="data-analytics-chart-container">
-                  <canvas ref={segmentChartRef}></canvas>
-                </div>
-              </div>
-              <div className="data-analytics-dashboard-card">
-                <div className="data-analytics-card-header">
-                  <h3>제품 유형별 매출</h3>
-                </div>
-                <div className="data-analytics-chart-container">
-                  <canvas ref={productChartRef}></canvas>
-                </div>
-              </div>
-            </div>
-
-            {/* 고객 획득 및 이탈 분석 차트 */}
-            <div className="data-analytics-dashboard-card">
-              <div className="data-analytics-card-header">
-                <h3>고객 획득 및 이탈 분석</h3>
-              </div>
-              <div className="data-analytics-acquisition-container">
-                <div className="data-analytics-acquisition-chart">
-                  <canvas ref={acquisitionChartRef}></canvas>
-                </div>
-
-                {/* 분석 요인 설명 */}
-                <div className="data-analytics-analysis-factors">
-                  <h4>주요 고객 이탈 원인</h4>
-                  <div className="data-analytics-factor-bars">
-                    <div className="data-analytics-factor-bar-item">
-                      <div className="data-analytics-factor-bar-label">
-                        가격 경쟁력 부족
-                      </div>
-                      <div className="data-analytics-factor-bar-container">
-                        <div
-                          className="data-analytics-factor-bar"
-                          style={{ width: "38%" }}
-                        ></div>
-                        <div className="data-analytics-factor-bar-percent">
-                          38%
-                        </div>
-                      </div>
-                    </div>
-                    <div className="data-analytics-factor-bar-item">
-                      <div className="data-analytics-factor-bar-label">
-                        기능 요구사항 불일치
-                      </div>
-                      <div className="data-analytics-factor-bar-container">
-                        <div
-                          className="data-analytics-factor-bar"
-                          style={{ width: "27%" }}
-                        ></div>
-                        <div className="data-analytics-factor-bar-percent">
-                          27%
-                        </div>
-                      </div>
-                    </div>
-                    <div className="data-analytics-factor-bar-item">
-                      <div className="data-analytics-factor-bar-label">
-                        서비스/지원 불만족
-                      </div>
-                      <div className="data-analytics-factor-bar-container">
-                        <div
-                          className="data-analytics-factor-bar"
-                          style={{ width: "18%" }}
-                        ></div>
-                        <div className="data-analytics-factor-bar-percent">
-                          18%
-                        </div>
-                      </div>
-                    </div>
-                    <div className="data-analytics-factor-bar-item">
-                      <div className="data-analytics-factor-bar-label">
-                        전략적 방향 변경
-                      </div>
-                      <div className="data-analytics-factor-bar-container">
-                        <div
-                          className="data-analytics-factor-bar"
-                          style={{ width: "12%" }}
-                        ></div>
-                        <div className="data-analytics-factor-bar-percent">
-                          12%
-                        </div>
-                      </div>
-                    </div>
-                    <div className="data-analytics-factor-bar-item">
-                      <div className="data-analytics-factor-bar-label">
-                        기타 사유
-                      </div>
-                      <div className="data-analytics-factor-bar-container">
-                        <div
-                          className="data-analytics-factor-bar"
-                          style={{ width: "5%" }}
-                        ></div>
-                        <div className="data-analytics-factor-bar-percent">
-                          5%
-                        </div>
-                      </div>
-                    </div>
+                {/* 신규 계약 매출 */}
+                <div className="summary-card">
+                  <div className="card-title">신규 계약 매출</div>
+                  <div className="card-value">
+                    ₩{summary.newContractTotal.toLocaleString()}
                   </div>
+                  <div
+                    className={`card-change ${
+                      summary.newContractTotal - summary.newContractPrev >= 0
+                        ? "up"
+                        : "down"
+                    }`}
+                  >
+                    {summary.newContractTotal - summary.newContractPrev >= 0
+                      ? "▲ "
+                      : "▼ "}
+                    {summary.newContractPrev
+                      ? Math.abs(
+                          ((summary.newContractTotal -
+                            summary.newContractPrev) /
+                            summary.newContractPrev) *
+                            100
+                        ).toFixed(1)
+                      : 0}
+                    % 지난달 대비
+                  </div>
+                </div>
 
-                  <div className="data-analytics-insight-box">
-                    <div className="data-analytics-insight-icon">💡</div>
-                    <div className="data-analytics-insight-content">
-                      <strong>AI 인사이트:</strong>
-                      <p>
-                        이탈 감소를 위해 중소기업 고객군 대상 특별 가격 정책과
-                        온보딩 프로세스 개선을 고려해보세요. 최근 3개월간 이
-                        세그먼트에서 이탈율이 15% 증가했습니다.
-                      </p>
-                    </div>
+                {/* 평균 계약 금액 */}
+                <div className="summary-card">
+                  <div className="card-title">평균 계약 금액</div>
+                  <div className="card-value">
+                    ₩{summary.avgContract.toLocaleString()}
+                  </div>
+                  <div
+                    className={`card-change ${
+                      summary.avgContract - summary.avgContractPrev >= 0
+                        ? "up"
+                        : "down"
+                    }`}
+                  >
+                    {summary.avgContract - summary.avgContractPrev >= 0
+                      ? "▲ "
+                      : "▼ "}
+                    {summary.avgContractPrev
+                      ? Math.abs(
+                          ((summary.avgContract - summary.avgContractPrev) /
+                            summary.avgContractPrev) *
+                            100
+                        ).toFixed(1)
+                      : 0}
+                    % 지난달 대비
+                  </div>
+                </div>
+
+                {/* 연간 예상 매출 */}
+                <div className="summary-card">
+                  <div className="card-title">연간 예상 매출</div>
+                  <div className="card-value">
+                    ₩{(summary.annualEstimate / 1e9).toFixed(1)}B
+                  </div>
+                  <div
+                    className={`card-change ${
+                      summary.annualEstimate - summary.ytdLastYear >= 0
+                        ? "up"
+                        : "down"
+                    }`}
+                  >
+                    {summary.annualEstimate - summary.ytdLastYear >= 0
+                      ? "▲ "
+                      : "▼ "}
+                    {summary.ytdLastYear
+                      ? Math.abs(
+                          ((summary.annualEstimate - summary.ytdLastYear) /
+                            summary.ytdLastYear) *
+                            100
+                        ).toFixed(1)
+                      : 0}
+                    % 작년 대비
                   </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* (C) 매출 탭 및 차트 */}
+            {!isLoading && (
+              <>
+                {/* 매출 시간 범위 탭 */}
+                <div className="data-analytics-time-range-tabs">
+                  {["일별", "주별", "월별", "분기별", "연간"].map((range) => (
+                    <button
+                      key={range}
+                      className={`data-analytics-tab-button ${
+                        activeTimeRange === range ? "active" : ""
+                      }`}
+                      onClick={() => setActiveTimeRange(range)}
+                    >
+                      {range}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 매출 추이(Line) 차트 */}
+                <div className="data-analytics-dashboard-card">
+                  <div className="data-analytics-card-header">
+                    <h3>매출 추이 ({activeTimeRange})</h3>
+                  </div>
+                  <div className="data-analytics-chart-container">
+                    <canvas ref={revenueChartRef}></canvas>
+                  </div>
+                </div>
+
+                {/* 고객 세그먼트 Pie 차트 */}
+                <div className="data-analytics-dashboard-card">
+                  <div className="data-analytics-card-header">
+                    <h3>고객 세그먼트별 매출 분포</h3>
+                  </div>
+                  <div className="data-analytics-chart-container pie-chart">
+                    <canvas ref={segmentChartRef}></canvas>
+                  </div>
+                </div>
+
+                {/* 제품 유형 Pie 차트 */}
+                <div className="data-analytics-dashboard-card">
+                  <div className="data-analytics-card-header">
+                    <h3>제품 유형별 매출 분포</h3>
+                  </div>
+                  <div className="data-analytics-chart-container pie-chart">
+                    <canvas ref={productChartRef}></canvas>
+                  </div>
+                </div>
+
+                {/* 월별 신규 고객/이탈 Bar 차트 */}
+                <div className="data-analytics-dashboard-card">
+                  <div className="data-analytics-card-header">
+                    <h3>월별 신규 고객(획득) 및 이탈</h3>
+                  </div>
+                  <div className="data-analytics-chart-container">
+                    <canvas ref={acqChartRef}></canvas>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

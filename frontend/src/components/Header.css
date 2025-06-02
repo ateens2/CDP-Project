@@ -1,8 +1,12 @@
+/* src/components/Header.css */
+
+/* ── 기존 Header 스타일 ── */
 .Header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 40px;
+  padding: 0 20px;
+  height: 60px;
   border-bottom: 1px solid #c8e6c9;
   background-color: #e8f5e9;
 }
@@ -16,7 +20,7 @@
 .header-title {
   flex: 1;
   text-align: center;
-  font-size: 24px;
+  font-size: 20px;
 }
 .header-right {
   position: relative;
@@ -44,7 +48,7 @@
   background: #fff;
   border: 1px solid #d1d5db;
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-top: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -72,4 +76,73 @@
 }
 .login-button:hover {
   color: #333;
+}
+
+/* ── 햄버거 아이콘 스타일 ── */
+.hamburger-icon {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  margin-right: 10px;
+  cursor: pointer;
+  color: #555;
+  transition: color 0.2s;
+}
+.hamburger-icon:hover {
+  color: #333;
+}
+
+/* ── 사이드바 컨테이너 기본 상태 (숨김) ── */
+#sidebar-container {
+  position: fixed;
+  top: 60px;                   /* 헤더 아래부터 */
+  left: 0;
+  width: 11rem;                /* 필요 시 변경 가능 */
+  height: calc(100vh - 60px);  /* 헤더 높이 60px 제외 나머지 */
+  background-color: #fff;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  overflow-y: auto;
+  transform: translateX(-100%);          /* 화면 왼쪽 바깥으로 숨김 */
+  transition: transform 0.3s ease-in-out;/* 0.3초 동안 부드럽게 슬라이드 */
+}
+
+/* ── showCategory === true 일 때 .open 클래스가 붙은 상태 ── */
+#sidebar-container.open {
+  transform: translateX(0);   /* 화면 안쪽, 제자리 위치로 나타남 */
+}
+
+/* ── Category 내부 스타일 ── */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+}
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+}
+.sidebar .menu-header {
+  color: #16a34a;
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.sidebar-item {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 10px 20px;
+  font-size: 16px;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.sidebar-item:hover {
+  background-color: #f3f4f6;
+}
+.sidebar-item.active {
+  background-color: #e6f4ea;
+  color: #16a34a;
 }

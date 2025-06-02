@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import DriveSheetSelector from "../components/DriveSheetSelector";
 import FieldMappingTool from "../components/FieldMappingTool";
+import Category from "../components/Category";
 import "./Workspace.css";
 
 const Workspace = () => {
@@ -91,7 +92,7 @@ const Workspace = () => {
 
   return (
     <div className="workspace-container">
-      <Header />
+      <Header sheet={selectedSheet} />
       <main className="workspace-content">
         <h1 className="workspace-title">워크스페이스</h1>
 
@@ -110,11 +111,21 @@ const Workspace = () => {
                         <div className="sheet-id">ID: {sheet.sheetId}</div>
                       </div>
                       <div className="sheet-actions">
-                        <button className="sheet-action-btn" onClick={() => handleExistingSheetClick(sheet)}>
+                        <button
+                          className="sheet-action-btn"
+                          onClick={() => handleExistingSheetClick(sheet)}
+                        >
                           <span>고객 관리</span>
                         </button>
-                        <button className="sheet-action-btn" onClick={() => setShowFieldMapping(!showFieldMapping)}>
-                          <span>{showFieldMapping ? "필드 매핑 닫기" : "AI 필드 매핑"}</span>
+                        <button
+                          className="sheet-action-btn"
+                          onClick={() => setShowFieldMapping(!showFieldMapping)}
+                        >
+                          <span>
+                            {showFieldMapping
+                              ? "필드 매핑 닫기"
+                              : "AI 필드 매핑"}
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -140,11 +151,10 @@ const Workspace = () => {
             )}
           </div>
         </section>
-
         {/* 필드 매핑 도구 */}
         {showFieldMapping && selectedSheet && (
           <section className="workspace-section field-mapping-section">
-            <FieldMappingTool 
+            <FieldMappingTool
               sheet={selectedSheet}
               onMapComplete={handleFieldMappingComplete}
             />
@@ -162,15 +172,16 @@ const Workspace = () => {
               <div className="help-item">
                 <h3>스프레드시트 연결하기</h3>
                 <p>
-                  "Google Drive에서 스프레드시트 선택" 버튼을 클릭하여 기존
-                  고객 데이터가 있는 스프레드시트를 선택하세요.
+                  "Google Drive에서 스프레드시트 선택" 버튼을 클릭하여 기존 고객
+                  데이터가 있는 스프레드시트를 선택하세요.
                 </p>
               </div>
               <div className="help-item">
                 <h3>AI 필드 매핑</h3>
                 <p>
-                  스프레드시트의 열 이름이 표준 형식과 다른 경우, AI 필드 매핑 기능을
-                  사용하면 자동으로 열 이름을 감지하고 표준 필드로 매핑합니다.
+                  스프레드시트의 열 이름이 표준 형식과 다른 경우, AI 필드 매핑
+                  기능을 사용하면 자동으로 열 이름을 감지하고 표준 필드로
+                  매핑합니다.
                 </p>
               </div>
               <div className="help-item">

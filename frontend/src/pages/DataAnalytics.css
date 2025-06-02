@@ -414,3 +414,78 @@
     height: auto;
   }
 }
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px; /* 카드 아래 여유 공간 */
+}
+
+/* ── 각 카드 공통 스타일 ── */
+.summary-card {
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 타이틀 */
+.card-title {
+  font-size: 14px;
+  color: #6b7280; /* gray-500 */
+  margin-bottom: 8px;
+}
+
+/* 금액 값 */
+.card-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #111827; /* gray-900 */
+  margin-bottom: 8px;
+}
+
+/* 상승/하강 퍼센트 텍스트 */
+.card-change {
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+}
+.card-change.up {
+  color: #10b981; /* green-500 */
+}
+.card-change.down {
+  color: #ef4444; /* red-500 */
+}
+.loading-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+  color: #6c757d;   /* 회색 계열 텍스트 */
+  font-size: 1rem;
+  flex: 1;
+}
+
+.loading-message i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: #28a745;   /* 녹색 계열 아이콘 */
+}
+
+/* 스피너 애니메이션 (CustomerManagement과 동일) */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.fa-spin {
+  animation: spin 1s linear infinite;
+}

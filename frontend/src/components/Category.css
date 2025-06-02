@@ -3,14 +3,14 @@
 /* 사이드바 전체 컨테이너 */
 .sidebar {
   width: 11rem; /* 256px */
-  background-color: #e8f5e9; /* 연한 녹색 */
+  background-color: #fff; /* 연한 녹색 */
   color: #1f2937; /* 어두운 그레이 (텍스트 대비) */
   display: flex;
   flex-direction: column;
   height: 100%;
   top: 120;
   
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
   z-index: 10;
 }
 

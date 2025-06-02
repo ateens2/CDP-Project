@@ -62,7 +62,7 @@ const CustomerManagement = () => {
     return new Promise((resolve, reject) => {
       let attempts = 0;
       const maxAttempts = 30; // 최대 3초 대기
-      
+
       const checkGapi = () => {
         attempts++;
         if (window.gapi?.client) {
@@ -73,7 +73,7 @@ const CustomerManagement = () => {
           setTimeout(checkGapi, 100);
         }
       };
-      
+
       checkGapi();
     });
   };
@@ -81,7 +81,7 @@ const CustomerManagement = () => {
   // 시트 데이터 로드 및 헤더 매핑
   const fetchSheetData = async () => {
     console.log("fetchSheetData 시작:", { sheet, gapi: !!window.gapi?.client });
-    
+
     if (!sheet) {
       console.log("시트 정보가 없음");
       setError("시트 정보를 찾을 수 없습니다.");
@@ -127,12 +127,16 @@ const CustomerManagement = () => {
       setActiveSheetId(sheetId);
 
       if (!customerSheet) {
-        console.warn("고객_정보 시트를 찾을 수 없습니다. 첫 번째 시트를 사용합니다.");
-        setError("고객_정보 시트를 찾을 수 없습니다. 먼저 필드 매핑 도구를 사용하여 고객_정보 시트를 생성해주세요.");
+        console.warn(
+          "고객_정보 시트를 찾을 수 없습니다. 첫 번째 시트를 사용합니다."
+        );
+        setError(
+          "고객_정보 시트를 찾을 수 없습니다. 먼저 필드 매핑 도구를 사용하여 고객_정보 시트를 생성해주세요."
+        );
         return;
       }
 
-      const rangeAll = `'${name}'!A1:J10000`; // 고객_정보 시트는 A부터 J열까지
+      const rangeAll = `'${name}'!A1:J`; // 고객_정보 시트는 A부터 J열까지
       console.log("데이터 범위:", rangeAll);
 
       const resp = await window.gapi.client.sheets.spreadsheets.values.get({
@@ -156,14 +160,28 @@ const CustomerManagement = () => {
 
       // 예상되는 고객_정보 시트 헤더 확인
       const expectedHeaders = [
-        "고객ID", "고객명", "연락처", "이메일", "가입일",
-        "마지막_구매일", "총_구매_금액", "총_구매_횟수", "탄소_감축_등급", "탄소_감축_점수"
+        "고객ID",
+        "고객명",
+        "연락처",
+        "이메일",
+        "가입일",
+        "마지막_구매일",
+        "총_구매_금액",
+        "총_구매_횟수",
+        "탄소_감축_등급",
+        "탄소_감축_점수",
       ];
-      
-      const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
+
+      const missingHeaders = expectedHeaders.filter(
+        (h) => !headers.includes(h)
+      );
       if (missingHeaders.length > 0) {
         console.warn("누락된 헤더:", missingHeaders);
-        setError(`고객_정보 시트에 필수 헤더가 누락되었습니다: ${missingHeaders.join(", ")}\n먼저 필드 매핑 도구를 사용하여 올바른 시트를 생성해주세요.`);
+        setError(
+          `고객_정보 시트에 필수 헤더가 누락되었습니다: ${missingHeaders.join(
+            ", "
+          )}\n먼저 필드 매핑 도구를 사용하여 올바른 시트를 생성해주세요.`
+        );
         return;
       }
 
@@ -184,9 +202,11 @@ const CustomerManagement = () => {
         );
         return { __rowNum__: idx + 2, ...obj };
       });
-      
+
       // 고객명이 있는 행만 필터링
-      const filtered = allRows.filter((r) => r["고객명"] && r["고객명"].trim() !== "");
+      const filtered = allRows.filter(
+        (r) => r["고객명"] && r["고객명"].trim() !== ""
+      );
       console.log("필터링된 데이터:", filtered.length, "행");
 
       setCustomers(filtered);
@@ -197,7 +217,9 @@ const CustomerManagement = () => {
       setError(null);
     } catch (error) {
       console.error("시트 데이터 로드 중 오류:", error);
-      setError("시트 데이터를 로드하는 중 오류가 발생했습니다: " + error.message);
+      setError(
+        "시트 데이터를 로드하는 중 오류가 발생했습니다: " + error.message
+      );
     } finally {
       setIsLoading(false);
     }
@@ -217,7 +239,10 @@ const CustomerManagement = () => {
 
   // user 및 sheets가 로드된 후 추가 체크
   useEffect(() => {
-    console.log("useEffect 실행 - user/sheets 변경:", { user: !!user, sheets: sheets?.length });
+    console.log("useEffect 실행 - user/sheets 변경:", {
+      user: !!user,
+      sheets: sheets?.length,
+    });
     if (user && sheets && sheets.length > 0 && !sheet) {
       // sheets가 로드되었지만 sheet가 없는 경우, 첫 번째 시트 사용
       const firstSheet = sheets[0];
@@ -232,19 +257,19 @@ const CustomerManagement = () => {
       alert("시트 헤더 정보가 없습니다. 먼저 시트를 로드해주세요.");
       return;
     }
-    
+
     // 고객_정보 시트의 기본 구조로 빈 객체 생성
     const empty = {
-      "고객ID": "",
-      "고객명": "",
-      "연락처": "",
-      "이메일": "",
-      "가입일": new Date().toISOString().split('T')[0], // 오늘 날짜
-      "마지막_구매일": "",
-      "총_구매_금액": "0",
-      "총_구매_횟수": "0",
-      "탄소_감축_등급": "Stone",
-      "탄소_감축_점수": "0"
+      고객ID: "",
+      고객명: "",
+      연락처: "",
+      이메일: "",
+      가입일: new Date().toISOString().split("T")[0], // 오늘 날짜
+      마지막_구매일: "",
+      총_구매_금액: "0",
+      총_구매_횟수: "0",
+      탄소_감축_등급: "Stone",
+      탄소_감축_점수: "0",
     };
     empty.__rowNum__ = null;
     setLastChangedKey(null);
@@ -264,7 +289,7 @@ const CustomerManagement = () => {
       alert("Google Sheets API가 로드되지 않았습니다.");
       return;
     }
-    
+
     await window.gapi.client.load("sheets", "v4");
 
     try {
@@ -297,9 +322,11 @@ const CustomerManagement = () => {
 
         // 로컬 state도 업데이트
         setCustomers((prev) =>
-          prev.map((c) => (c.__rowNum__ === rowNum ? { ...selectedCustomer } : c))
+          prev.map((c) =>
+            c.__rowNum__ === rowNum ? { ...selectedCustomer } : c
+          )
         );
-        
+
         alert("고객 정보가 성공적으로 업데이트되었습니다.");
       }
     } catch (error) {
@@ -321,24 +348,26 @@ const CustomerManagement = () => {
 
     try {
       await window.gapi.client.load("sheets", "v4");
-      
+
       const rowNum = selectedCustomer.__rowNum__;
-      
+
       // 행 삭제 요청
       await window.gapi.client.sheets.spreadsheets.batchUpdate({
         spreadsheetId: sheet.sheetId,
         resource: {
-          requests: [{
-            deleteDimension: {
-              range: {
-                sheetId: activeSheetId,
-                dimension: "ROWS",
-                startIndex: rowNum - 1, // 0-based index
-                endIndex: rowNum
-              }
-            }
-          }]
-        }
+          requests: [
+            {
+              deleteDimension: {
+                range: {
+                  sheetId: activeSheetId,
+                  dimension: "ROWS",
+                  startIndex: rowNum - 1, // 0-based index
+                  endIndex: rowNum,
+                },
+              },
+            },
+          ],
+        },
       });
 
       alert("고객이 성공적으로 삭제되었습니다.");
@@ -405,10 +434,8 @@ const CustomerManagement = () => {
 
   return (
     <div className="customer-management">
-      <Header />
+      <Header sheet={sheet} />
       <div className="main-content">
-        <Category />
-        
         <div className="customer-management-content">
           {/* 좌측: 고객 목록 */}
           <div className="customer-list-section" ref={listContainerRef}>
@@ -424,16 +451,15 @@ const CustomerManagement = () => {
                 />
                 <i className="fas fa-search search-icon"></i>
               </div>
-              <button 
-                className="add-customer-btn" 
+              <button
+                className="add-customer-btn"
                 onClick={handleNewCustomer}
                 disabled={isLoading || !!error}
               >
-                <i className="fas fa-plus"></i>
-                새 고객 추가
+                <i className="fas fa-plus"></i>새 고객 추가
               </button>
             </div>
-            
+
             {/* 로딩 상태 */}
             {isLoading && (
               <div className="loading-message">
@@ -441,7 +467,7 @@ const CustomerManagement = () => {
                 <p>고객 데이터를 불러오는 중...</p>
               </div>
             )}
-            
+
             {/* 에러 상태 */}
             {error && !isLoading && (
               <div className="error-message">
@@ -453,7 +479,7 @@ const CustomerManagement = () => {
                 </button>
               </div>
             )}
-            
+
             {/* 정상 상태: 고객 목록 */}
             {!isLoading && !error && (
               <>
@@ -463,7 +489,7 @@ const CustomerManagement = () => {
                   selectedCustomer={selectedCustomer}
                   onSelectCustomer={handleSelectCustomer}
                 />
-                
+
                 {/* 페이징 */}
                 {totalPages > 1 && (
                   <div className="pagination">
@@ -499,7 +525,7 @@ const CustomerManagement = () => {
               />
             </div>
           )}
-          
+
           {/* 안내 메시지 */}
           {!isEditPanelOpen && (
             <div className="no-selection-message">
