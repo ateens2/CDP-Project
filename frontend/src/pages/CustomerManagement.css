@@ -1,186 +1,279 @@
-/* CustomerManagement.css */
-.customer-management-container {
+/* src/pages/CustomerManagement.css */
+.customer-management {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.main-content {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: calc(100vh - 80px); /* Header 높이 제외 */
 }
 
-/* Header 아래 전체 콘텐츠 영역: 왼쪽 사이드바와 오른쪽 영역 */
-.content-area {
+.customer-management-content {
   display: flex;
   flex: 1;
-  overflow: hidden;
-  transition: all 0.5s ease;
-}
-
-/* 왼쪽 Category 영역 */
-
-/* 오른쪽 고객 리스트 영역 */
-.customer-list-section {
-  width: 100%;
+  gap: 1rem;
   padding: 1rem;
-  overflow-y: auto;
-  transition: width 0.5s ease;
+  max-height: calc(100vh - 140px); /* Header와 Category 높이 제외 */
 }
 
-.customer-list-section.shrink {
-  width: calc(100% - 770px);
+/* 좌측 고객 목록 섹션 */
+.customer-list-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
-/* 페이지네이션 컨트롤 (기존 스타일 유지) */
+.search-and-add {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  align-items: center;
+}
+
+.search-bar {
+  flex: 1;
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 25px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background-color: white;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #28a745;
+  box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.25);
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+  font-size: 1rem;
+}
+
+.add-customer-btn {
+  padding: 0.75rem 1.5rem;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.add-customer-btn:hover {
+  background-color: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+/* 페이징 */
 .pagination {
   display: flex;
   justify-content: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-.pagination button {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #ddd;
-  background-color: #f9f9f9;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background-color 0.3s;
-}
-.pagination button:hover {
-  background-color: #e5e7eb;
-}
-.pagination button.active {
-  background-color: #16a34a;
-  color: #fff;
-  border-color: #16a34a;
-}
-.pagination button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* 고객 상세정보 패널 */
-.customer-edit-panel {
-  position: fixed;
-  top: 60px;  /* Header 높이 이후 */
-  right: -600px; /* 초기에는 화면 밖 */
-  width: 600px;
-  height: calc(100% - 60px);
-  background-color: #fff;
-  border-left: 1px solid #e5e7eb;
-  box-shadow: -2px 0 6px rgba(0, 0, 0, 0.1);
-  transition: right 0.5s ease;
+  align-items: center;
+  gap: 1rem;
   padding: 1rem;
-  z-index: 10;
-  overflow-y: auto; /* 내부 스크롤 허용 */
-}
-.customer-edit-panel.open {
-  right: 0;
+  background-color: #f8f9fa;
+  border-top: 1px solid #e9ecef;
 }
 
-/* 상세정보 패널 내부 */
-.panel-inner {
+.pagination button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #dee2e6;
+  background-color: white;
+  color: #495057;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination button:hover:not(:disabled) {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.pagination button:disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.page-info {
+  font-size: 1rem;
+  color: #495057;
+  font-weight: 500;
+}
+
+/* 우측 고객 상세 섹션 */
+.customer-detail-section {
+  flex: 2;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  max-height: 100%;
+}
+
+/* 선택 안내 메시지 */
+.no-selection-message {
+  flex: 2;
   display: flex;
   flex-direction: column;
-}
-.panel-close-button {
-  align-self: flex-end;
-  padding: 0.5rem 1rem;
-  margin-bottom: 1rem;
-  border: none;
-  background-color: #ccc;
-  cursor: pointer;
-}
-.panel-field {
-  margin-bottom: 1rem;
-}
-.panel-field label {
-  display: inline-block;
-  width: 30%;
-  font-weight: 600;
-}
-.panel-field input {
-  width: 70%;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-.panel-placeholder {
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  color: #6c757d;
   text-align: center;
-  margin-top: 2rem;
-  color: #666;
+  padding: 3rem;
 }
 
-.search-bar-wrapper {
-  position: relative;
-  display: inline-block;  /* 아이콘과 input을 일자로 배치 */
-}
-
-/* 실제 입력창 */
-.search-bar-wrapper input {
-  width: 400px;            /* 원하시는 너비로 조정 */
-  padding: 8px 12px 8px 32px; /* 왼쪽 패딩을 크게 주어 아이콘 공간 확보 */
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-/* 아이콘 스타일 */
-.search-bar-wrapper .fa-search {
-  position: absolute;
-  left: 8px;               /* 입력창 왼쪽에서 8px 떨어진 위치 */
-  top: 50%;                /* 수직 중앙 정렬 */
-  transform: translateY(-50%);
-  font-size: 16px;
-  color: #888;             /* 아이콘 색상 */
-  pointer-events: none;    /* 아이콘 위 클릭이 input으로 전달되도록 */
-}
-/* 툴바 컨테이너 */
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.no-selection-message i {
+  font-size: 4rem;
   margin-bottom: 1rem;
+  opacity: 0.5;
 }
 
-/* ────────────────────────────────────────────────── */
-/* 툴바 우측의 아이콘 버튼 그룹 */
-.toolbar-buttons {
-  display: flex;
-  gap: 0.5rem;
+.no-selection-message h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  color: #495057;
 }
 
-/* 공통 아이콘 버튼 스타일 */
-.toolbar-button {
-  padding: 0.75rem;       /* 기본 0.5rem → 0.75rem으로 확대 */
-  font-size: 1.25rem;     /* 아이콘 크기 조절 */
-  width: 2.5rem;          /* 가로 고정 */
-  height: 2.5rem;
-  border: none;
-  border-radius: 0.25rem;
-  background: none;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-.toolbar-button:hover {
-  background-color: #e8f5e9; /* 연한 그린 */
-}
-.toolbar-button i {
-  color: #16a34a; /* 진한 그린 */
+.no-selection-message p {
+  margin: 0;
+  font-size: 1rem;
+  opacity: 0.8;
 }
 
-.btn-new-customer {
+/* 반응형 디자인 */
+@media (max-width: 1200px) {
+  .customer-management-content {
+    flex-direction: column;
+    max-height: none;
+  }
+  
+  .customer-list-section {
+    max-height: 50vh;
+  }
+  
+  .customer-detail-section {
+    max-height: 70vh;
+  }
+}
+
+@media (max-width: 768px) {
+  .customer-management-content {
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
+  
+  .search-and-add {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .search-bar {
+    width: 100%;
+  }
+  
+  .add-customer-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .pagination {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .pagination button {
+    width: 100%;
+  }
+  
+  .no-selection-message {
+    padding: 2rem 1rem;
+  }
+  
+  .no-selection-message i {
+    font-size: 3rem;
+  }
+  
+  .no-selection-message h3 {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-input {
+    padding: 0.5rem 1rem 0.5rem 2rem;
+    font-size: 0.9rem;
+  }
+  
+  .search-icon {
+    left: 0.7rem;
+    font-size: 0.9rem;
+  }
+  
+  .add-customer-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* 로딩 및 에러 상태 */
+.loading-message, .error-message {
   display: flex;
   align-items: center;
-  padding: 0.5rem;
-  background-color: #16a34a;   /* green-600 */
-  color: #fff;
-  border-radius: 0.25rem;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-.btn-new-customer:hover {
-  background-color: #15803d; /* green-700 */
-}
-.btn-new-customer i {
-  margin-right: 0.25rem;
-  color: #fff; /* 아이콘도 흰색으로 */
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+  color: #6c757d;
+  font-size: 1rem;
 }
 
+.error-message {
+  color: #dc3545;
+}
+
+/* 애니메이션 */
+.customer-management-content > * {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+} 
