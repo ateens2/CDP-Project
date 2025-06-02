@@ -335,7 +335,7 @@ function createSalesSheetData(originalHeaders, originalRows, salesMapping) {
   // 제품 판매 기록 시트 헤더 정의
   const salesHeaders = [
     '주문_번호', '주문자명', '주문_일자', '거래_완료_일자', 
-    '상품명', '단가', '총_주문_금액', '주문_상태'
+    '상품명', '단가', '수량', '총_주문_금액', '주문_상태'
   ];
   
   // 매핑 인덱스 생성
@@ -614,7 +614,7 @@ async function calculateCustomerPurchaseStats(sheets, spreadsheetId, salesSheetN
     // 제품 판매 기록 시트 데이터 가져오기
     const salesResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${salesSheetName}'!A:H`, // 제품 판매 기록 시트의 모든 컬럼
+      range: `'${salesSheetName}'!A:I`, // A부터 I열까지 (주문 상태까지, 수량 컬럼 추가로 인해 H에서 I로 변경)
     });
     
     const salesData = salesResponse.data.values || [];
@@ -811,7 +811,7 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
     // 판매 데이터 가져오기
     const salesResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${salesSheetName}'!A:H`, // A부터 H열까지 (주문 상태까지)
+      range: `'${salesSheetName}'!A:I`, // A부터 I열까지 (주문 상태까지, 수량 컬럼 추가로 인해 H에서 I로 변경)
     });
     
     const salesRows = salesResponse.data.values || [];
