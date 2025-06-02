@@ -250,16 +250,78 @@
 /* 로딩 및 에러 상태 */
 .loading-message, .error-message {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 3rem;
   text-align: center;
   color: #6c757d;
   font-size: 1rem;
+  flex: 1;
+}
+
+.loading-message i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: #28a745;
 }
 
 .error-message {
   color: #dc3545;
+}
+
+.error-message i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: #dc3545;
+}
+
+.error-message p {
+  margin-bottom: 1.5rem;
+  white-space: pre-line;
+  line-height: 1.5;
+}
+
+.retry-btn {
+  padding: 0.75rem 1.5rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.retry-btn:hover {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+/* 비활성화된 요소들 */
+.search-input:disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.add-customer-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}
+
+.add-customer-btn:disabled:hover {
+  background-color: #6c757d;
+  transform: none;
+  box-shadow: none;
 }
 
 /* 애니메이션 */
@@ -276,4 +338,14 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* 스피너 애니메이션 */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.fa-spin {
+  animation: spin 1s linear infinite;
 } 
