@@ -1,13 +1,13 @@
 /* src/pages/CustomerManagement.css */
 .customer-management {
-  min-height: 100vh;
+  min-height: 110vh;
   background-color: #f8f9fa;
 }
 
 .main-content {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 80px); /* Header 높이 제외 */
+  min-height: calc(110vh - 80px); /* Header 높이 제외 */
 }
 
 .customer-management-content {
@@ -15,7 +15,7 @@
   flex: 1;
   gap: 1rem;
   padding: 1rem;
-  max-height: calc(100vh - 140px); /* Header와 Category 높이 제외 */
+  max-height: calc(110vh - 140px); /* Header와 Category 높이 제외 */
 }
 
 /* 좌측 고객 목록 섹션 */
