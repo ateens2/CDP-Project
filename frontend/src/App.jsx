@@ -16,7 +16,7 @@ import InitialPage from "./pages/InitialPage";
 import CustomerManagement from "./pages/CustomerManagement";
 import DataAnalytics from "./pages/DataAnalytics";
 import UserDetailPage from "./pages/UserDetailPage";
-import AuditLogPage from './pages/AuditLogPage';
+import AuditLogPage from "./pages/AuditLogPage";
 
 function App() {
   const { gapiLoaded } = useGoogleAuth();
@@ -24,7 +24,14 @@ function App() {
   const [sheets, setSheets] = useState([]);
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-  if (!gapiLoaded) return <div>Loading Google API...</div>;
+  if (!gapiLoaded) {
+    return (
+      <div className="loading-message">
+        <i className="fas fa-spinner fa-spin"></i>
+        <p>로딩중...</p>
+      </div>
+    );
+  }
 
   return (
     <Router>
@@ -102,7 +109,14 @@ function UserProvider({
     fetchSession();
   }, [backendUrl, navigate, setUser, setSheets]);
 
-  if (loading) return <div>Loading session...</div>;
+  if (loading) {
+    return (
+      <div className="loading-message">
+        <i className="fas fa-spinner fa-spin"></i>
+        <p>로딩중...</p>
+      </div>
+    );
+  }
 
   return (
     <UserContext.Provider value={{ user, setUser, sheets, setSheets }}>

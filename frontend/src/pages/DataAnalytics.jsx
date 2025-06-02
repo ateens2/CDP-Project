@@ -90,7 +90,7 @@ function aggregateYearly(rows) {
 }
 
 const DataAnalytics = () => {
-  const { sheets } = useContext(UserContext);
+  const { user, sheets } = useContext(UserContext);
   const { state } = useLocation();
   // Category나 Workspace에서 넘겨받은 sheet, 없으면 Context.sheets[0]로 fallback
   const sheet =
@@ -505,6 +505,16 @@ const DataAnalytics = () => {
   // ───────────────────────────────────────────────────────────
   // JSX 렌더링
   // ───────────────────────────────────────────────────────────
+  if (!user) {
+    return (
+      <div className="customer-management">
+        <Header />
+        <div className="main-content">
+          <p>로그인이 필요합니다.</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="data-analytics-page">
       <Header sheet={sheet} />

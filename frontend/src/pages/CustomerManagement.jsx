@@ -2,7 +2,6 @@ import React, { useState, useEffect, useContext, useRef } from "react";
 import { UserContext } from "../contexts/UserContext";
 import { useLocation } from "react-router-dom";
 import Header from "../components/Header";
-import Category from "../components/Category";
 import CustomerList from "../components/CustomerList";
 import CustomerEditer from "../components/CustomerEditer";
 import "./CustomerManagement.css";

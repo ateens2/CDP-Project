@@ -24,18 +24,27 @@
 
 .customer-list-header {
   display: grid;
-  grid-template-columns: 2fr 1.5fr 2fr 1.2fr 0.8fr 1fr;
-  gap: 0.5rem;
+  grid-template-columns: 
+    minmax(min-content, auto) /* 고객명 */
+    minmax(min-content, auto) /* 연락처 */
+    minmax(min-content, auto) /* 이메일 */
+    minmax(min-content, auto) /* 총 구매금액 */
+    minmax(min-content, auto) /* 구매횟수 */
+    minmax(min-content, auto);/* 탄소등급 */
+  gap: 0.3rem;
   padding: 0.75rem 1rem;
   background-color: #e9ecef;
   border-bottom: 2px solid #dee2e6;
   font-weight: 600;
   color: #495057;
-  font-size: 0.9rem;
+  font-size: 0.1rem;
 }
 
 .header-item {
   text-align: center;
+  white-space: nowrap;       /* 한 줄로 고정 */
+  overflow: hidden;          /* 넘치는 텍스트는 숨김 */
+  text-overflow: ellipsis;   /* 필요 시 말줄임(...) 처리 */
 }
 
 .customer-list-ul {

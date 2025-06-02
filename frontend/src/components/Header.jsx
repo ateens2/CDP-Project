@@ -27,14 +27,13 @@ export default function Header({ hideTitle, sheet }) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setOpenMenu(false);
       }
+
       // 2) 사이드바 바깥 클릭 시 닫기
       if (showCategory) {
         const sidebarEl = document.getElementById("sidebar-container");
-        if (
-          sidebarEl &&
-          !sidebarEl.contains(e.target) &&
-          !e.target.classList.contains("hamburger-icon")
-        ) {
+        // “햄버거 버튼 내부” 클릭은 닫기 로직에서 제외하기 위해
+        const isHamburgerClick = e.target.closest(".hamburger-icon");
+        if (sidebarEl && !sidebarEl.contains(e.target) && !isHamburgerClick) {
           setShowCategory(false);
         }
       }
