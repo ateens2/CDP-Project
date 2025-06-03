@@ -116,7 +116,7 @@ export default function Header({ hideTitle, sheet }) {
 
       {/* ── 사이드바: 항상 렌더링하되, 클래스만 토글하여 애니메이션 처리 ── */}
       <div id="sidebar-container" className={showCategory ? "open" : ""}>
-        <Category sheet={sheet} />
+        <Category sheet={(user, sheet)} />
       </div>
     </>
   );

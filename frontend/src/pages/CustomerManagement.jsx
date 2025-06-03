@@ -5,6 +5,7 @@ import Header from "../components/Header";
 import CustomerList from "../components/CustomerList";
 import CustomerEditer from "../components/CustomerEditer";
 import "./CustomerManagement.css";
+import CustomToast from "../toast";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 
 const CustomerManagement = () => {
@@ -302,8 +303,12 @@ const CustomerManagement = () => {
           insertDataOption: "INSERT_ROWS",
           resource: { values: [values] },
         });
-        alert("새로운 고객이 시트에 추가되었습니다.");
+        CustomToast.success("새로운 고객이 추가되었습니다.", {
+          position: "bottom-right",
+        });
         fetchSheetData(); // 데이터 다시 로드
+        setSelectedCustomer(null);
+        setIsEditPanelOpen(false);
         return;
       } else {
         // 기존 고객 수정
@@ -326,11 +331,15 @@ const CustomerManagement = () => {
           )
         );
 
-        alert("고객 정보가 성공적으로 업데이트되었습니다.");
+        CustomToast.success("고객 정보가 성공적으로 업데이트 되었습니다.", {
+          position: "bottom-right",
+        });
       }
     } catch (error) {
       console.error("저장 중 오류:", error);
-      alert("저장 중 오류가 발생했습니다: " + error.message);
+      CustomToast.error("저장중 오류가 발생했습니다", {
+        position: "bottom-right",
+      });
     }
   };
 
@@ -369,13 +378,17 @@ const CustomerManagement = () => {
         },
       });
 
-      alert("고객이 성공적으로 삭제되었습니다.");
+      CustomToast.success("고객이 삭제되었습니다.", {
+        position: "bottom-right",
+      });
       fetchSheetData(); // 데이터 다시 로드
       setSelectedCustomer(null);
       setIsEditPanelOpen(false);
     } catch (error) {
       console.error("삭제 중 오류:", error);
-      alert("삭제 중 오류가 발생했습니다: " + error.message);
+      CustomToast.error("삭제중 오류가 발생했습니다.", {
+        position: "bottom-right",
+      });
     }
   };
 

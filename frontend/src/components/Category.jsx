@@ -2,6 +2,7 @@
 import React, { useContext, useState } from "react";
 import { UserContext } from "../contexts/UserContext";
 import { useNavigate, useLocation } from "react-router-dom";
+import CustomToast from "../toast";
 import "./Category.css";
 
 const Category = ({ sheet }) => {
@@ -39,9 +40,16 @@ const Category = ({ sheet }) => {
           className={`sidebar-item ${
             activeCategory === "고객 관리" ? "active" : ""
           }`}
-          onClick={() =>
-            handleCategoryClick("고객 관리", "/customer-management")
-          }
+          onClick={() => {
+            if (!user) {
+              console.log("로그인X");
+              CustomToast.error("로그인 후 이용해 주세요.", {
+                position: "bottom-right",
+              });
+            } else {
+              handleCategoryClick("고객 관리", "/customer-management");
+            }
+          }}
         >
           고객 관리
         </button>
@@ -49,7 +57,15 @@ const Category = ({ sheet }) => {
           className={`sidebar-item ${
             activeCategory === "매출 분석" ? "active" : ""
           }`}
-          onClick={() => handleCategoryClick("매출 분석", "/data-analytics")}
+          onClick={() => {
+            if (!user) {
+              CustomToast.error("로그인 후 이용해 주세요.", {
+                position: "bottom-right",
+              });
+            } else {
+              handleCategoryClick("매출 분석", "/data-analytics");
+            }
+          }}
         >
           매출 분석
         </button>
