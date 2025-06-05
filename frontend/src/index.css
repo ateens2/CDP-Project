@@ -1,0 +1,19 @@
+/* Global font settings */
+html,
+body,
+#root {
+  font-family: "Gowun Dodum", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  font-family: "Gowun Dodum", sans-serif;
+}
+
+/* Remove default margins and paddings */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}

@@ -1,5 +1,18 @@
 /* App.css */
 
+/* 전역 폰트 설정 */
+* {
+  font-family: "Gowun Dodum", sans-serif;
+}
+
+body {
+  font-family: "Gowun Dodum", sans-serif;
+}
+
+.gowun-dodum-regular {
+  font-family: "Gowun Dodum", sans-serif;
+}
+
 .loading-message {
   position: fixed;
   top: 50%;
