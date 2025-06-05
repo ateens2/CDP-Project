@@ -107,6 +107,11 @@ const CustomerEditer = ({
     return `₩${num.toLocaleString()}`;
   };
 
+  const formatScore = (score) => {
+    const num = Number(score) || 0;
+    return num.toLocaleString();
+  };
+
   const getCarbonGradeColor = (grade) => {
     const colors = {
       'Stone': '#6c757d',
@@ -140,7 +145,7 @@ const CustomerEditer = ({
               {customer["탄소_감축_등급"] || "등급없음"}
             </span>
             <span className="carbon-score">
-              {Number(customer["탄소_감축_점수"] || 0).toFixed(1)}점
+              {formatScore(customer["탄소_감축_점수"])}점
             </span>
           </div>
         </div>
@@ -225,7 +230,7 @@ const CustomerEditer = ({
               <div className="carbon-score-display">
                 <div className="score-label">탄소 감축 점수</div>
                 <div className="score-value">
-                  {Number(customer["탄소_감축_점수"] || 0).toFixed(1)}
+                  {formatScore(customer["탄소_감축_점수"])}
                 </div>
               </div>
             </div>
