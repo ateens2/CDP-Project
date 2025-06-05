@@ -24,27 +24,32 @@
 
 .customer-list-header {
   display: grid;
-  grid-template-columns: 
-    minmax(min-content, auto) /* 고객명 */
-    minmax(min-content, auto) /* 연락처 */
-    minmax(min-content, auto) /* 이메일 */
-    minmax(min-content, auto) /* 총 구매금액 */
-    minmax(min-content, auto) /* 구매횟수 */
-    minmax(min-content, auto);/* 탄소등급 */
-  gap: 0.3rem;
+  grid-template-columns: 1fr 1.5fr 2fr 1.2fr 0.8fr 1fr;
+  gap: 0.5rem;
   padding: 0.75rem 1rem;
   background-color: #e9ecef;
   border-bottom: 2px solid #dee2e6;
   font-weight: 600;
   color: #495057;
-  font-size: 0.1rem;
+  font-size: 0.9rem;
+  align-items: center;
 }
 
 .header-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   white-space: nowrap;       /* 한 줄로 고정 */
   overflow: hidden;          /* 넘치는 텍스트는 숨김 */
   text-overflow: ellipsis;   /* 필요 시 말줄임(...) 처리 */
+  min-height: 20px;          /* 최소 높이 설정 */
+}
+
+/* 첫 번째 헤더 아이템(고객명)도 센터 정렬로 변경 */
+.header-item:first-child {
+  justify-content: center; /* 센터 정렬 */
+  text-align: center;
 }
 
 .customer-list-ul {
@@ -55,12 +60,14 @@
 
 .customer-list-item {
   display: grid;
-  grid-template-columns: 2fr 1.5fr 2fr 1.2fr 0.8fr 1fr;
+  grid-template-columns: 1fr 1.5fr 2fr 1.2fr 0.8fr 1fr;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid #e9ecef;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  align-items: center; /* 그리드 아이템들 상하 가운데 정렬 */
+  min-height: 60px; /* 최소 높이 설정으로 일관성 유지 */
 }
 
 .customer-list-item:hover {
@@ -78,11 +85,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center; /* 상하 가운데 정렬 */
+  justify-content: center; /* 좌우 가운데 정렬 */
+  min-height: 30px; /* 최소 높이로 일관성 유지 */
+  line-height: 1.4; /* 텍스트 라인 높이 조정 */
+  margin: 0 !important;/* 명시적으로 마진 제거 */
 }
 
 .customer-name {
   font-weight: 500;
-  text-align: left !important;
+  justify-content: center !important; /* 고객명도 센터 정렬로 변경 */
+  text-align: center !important; /* 센터 정렬 */
 }
 
 .customer-total-amount {
@@ -99,6 +113,7 @@
   border-radius: 12px;
   padding: 0.2rem 0.5rem;
   font-size: 0.8rem;
+  min-width: 60px; /* 최소 너비로 일관성 유지 */
 }
 
 .grade-stone {
