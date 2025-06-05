@@ -1,6 +1,6 @@
 // src/components/Header.jsx
 import React, { useContext, useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { UserContext } from "../contexts/UserContext";
 import { logoutUser } from "../auth/Logout";
 import { loginWithGoogle } from "../auth/Login";
@@ -10,6 +10,7 @@ import "./Header.css";
 export default function Header({ hideTitle, sheet }) {
   const { user, setUser, setSheets } = useContext(UserContext);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // 유저 드롭다운
   const [openMenu, setOpenMenu] = useState(false);
@@ -20,6 +21,26 @@ export default function Header({ hideTitle, sheet }) {
   const [isHamburgerActive, setIsHamburgerActive] = useState(false);
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
+  // 페이지별 타이틀 결정
+  const getPageTitle = () => {
+    const pathname = location.pathname;
+    if (pathname === "/" || pathname.includes("workspace")) {
+      return { main: "Workspace", sub: "Green Resource Management" };
+    } else if (pathname.includes("customer-management")) {
+      return { main: "Customer Management", sub: "고객 관리 시스템" };
+    } else if (pathname.includes("data-analytics")) {
+      return { main: "Data Analytics", sub: "매출 분석 대시보드" };
+    } else if (pathname.includes("audit-log")) {
+      return { main: "Audit Log", sub: "감사 로그 시스템" };
+    } else if (pathname.includes("profile")) {
+      return { main: "Profile", sub: "사용자 프로필" };
+    } else {
+      return { main: "Dashboard", sub: "Green Resource Management" };
+    }
+  };
+
+  const pageTitle = getPageTitle();
 
   // 클릭 외부 영역 시 메뉴/사이드바 닫기
   useEffect(() => {
@@ -95,8 +116,8 @@ export default function Header({ hideTitle, sheet }) {
 
         {!hideTitle && (
           <div className="header-title">
-            <span className="workspace-text">Dashboard</span>
-            <span className="workspace-subtitle">Green Resource Management</span>
+            <span className="workspace-text">{pageTitle.main}</span>
+            <span className="workspace-subtitle">{pageTitle.sub}</span>
           </div>
         )}
 
@@ -108,7 +129,9 @@ export default function Header({ hideTitle, sheet }) {
                 <span className="user-name">{user.name} 님</span>
               </div>
               <div className="user-avatar" onClick={() => setOpenMenu((o) => !o)}>
-                <i className="fa-regular fa-circle-user user-icon" />
+                <div className="avatar-circle">
+                  <i className="fa fa-user avatar-icon"></i>
+                </div>
               </div>
               {openMenu && (
                 <div className="user-menu">
