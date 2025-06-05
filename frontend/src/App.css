@@ -11,6 +11,23 @@ body {
 
 .gowun-dodum-regular {
   font-family: "Gowun Dodum", sans-serif;
+  font-weight: 400;
+}
+
+.gowun-dodum-bold {
+  font-family: "Gowun Dodum", sans-serif;
+  font-weight: 700;
+}
+
+/* 굵은 글씨가 적용되는 모든 요소에 적절한 폰트 weight 설정 */
+b, strong, .font-bold, .font-weight-bold {
+  font-family: "Gowun Dodum", sans-serif;
+  font-weight: 700;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Gowun Dodum", sans-serif;
+  font-weight: 700;
 }
 
 .loading-message {

@@ -53,6 +53,7 @@
   font-weight: 700;
   color: #065f46;
   letter-spacing: -0.5px;
+  font-family: "Gowun Dodum", sans-serif;
 }
 
 .workspace-subtitle {
@@ -61,6 +62,7 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  font-family: "Gowun Dodum", sans-serif;
 }
 
 /* ── 사용자 정보 영역 개선 ── */
@@ -82,12 +84,14 @@
   font-size: 12px;
   color: #6b7280;
   font-weight: 500;
+  font-family: "Gowun Dodum", sans-serif;
 }
 
 .user-name {
   font-size: 14px;
   color: #374151;
   font-weight: 600;
+  font-family: "Gowun Dodum", sans-serif;
 }
 
 .user-avatar {
@@ -172,11 +176,13 @@
   font-size: 16px;
   font-weight: 600;
   color: #065f46;
+  font-family: "Gowun Dodum", sans-serif;
 }
 
 .menu-user-email {
   font-size: 12px;
   color: #6b7280;
+  font-family: "Gowun Dodum", sans-serif;
 }
 
 .menu-divider {
@@ -197,6 +203,7 @@
   align-items: center;
   gap: 12px;
   font-weight: 500;
+  font-family: "Gowun Dodum", sans-serif;
 }
 
 .user-menu button i {
@@ -238,6 +245,7 @@
   align-items: center;
   gap: 8px;
   box-shadow: 0 2px 4px rgba(34, 197, 94, 0.3);
+  font-family: "Gowun Dodum", sans-serif;
 }
 
 .login-button:hover {
@@ -360,6 +368,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  font-family: "Gowun Dodum", sans-serif;
 }
 
 .sidebar .menu-header i {
@@ -385,6 +394,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
+  font-family: "Gowun Dodum", sans-serif;
 }
 
 .menu-subheader i {
@@ -405,6 +415,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  font-family: "Gowun Dodum", sans-serif;
 }
 
 .sidebar-item i {
