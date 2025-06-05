@@ -1027,13 +1027,16 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
       const unitPrice = parseFloat(row[unitPriceIdx]?.toString().replace(/[^0-9.-]/g, '') || '0');
       const totalAmount = parseFloat(row[totalAmountIdx]?.toString().replace(/[^0-9.-]/g, '') || '0');
       
-      // 수량 필드가 있으면 사용, 없으면 계산
+      // 수량 필드가 있으면 사용, 없으면 계산 (현실적인 범위로 제한)
       let quantity = 1;
       if (quantityIdx !== -1 && row[quantityIdx]) {
         quantity = parseInt(row[quantityIdx]?.toString().replace(/[^0-9]/g, '') || '1');
       } else if (unitPrice > 0) {
         quantity = Math.round(totalAmount / unitPrice);
       }
+      
+      // 수량을 현실적인 범위로 제한 (1~50개)
+      quantity = Math.max(1, Math.min(quantity, 50));
       
       if (!productNames || totalAmount <= 0 || quantity <= 0) continue;
       
@@ -1111,12 +1114,17 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
         
         // 탄소 감축 점수 계산 (기준 배출량 - 제품 배출량)
         const carbonReduction = baseEmission - productInfo.totalEmission;
-        const carbonReductionForThisProduct = carbonReduction * quantityPerProduct;
+        
+        // 음수인 경우 0으로 처리 (기준제품보다 나쁜 경우)
+        const effectiveCarbonReduction = Math.max(0, carbonReduction);
+        
+        // 개별 제품의 탄소 감축량 계산
+        const carbonReductionForThisProduct = effectiveCarbonReduction * quantityPerProduct;
         
         totalCarbonReductionForCustomer += carbonReductionForThisProduct;
         
         if (i <= 5 || (foundProducts % 100 === 0)) { // 처음 5개 행 또는 100개마다 로깅
-          console.log(`${customerKey}: ${productName} (매칭: ${matchedProductName}) ${quantityPerProduct}개 구매, 단위 탄소 감축: ${carbonReduction.toFixed(2)}, 제품별 탄소 감축: ${carbonReductionForThisProduct.toFixed(2)}`);
+          console.log(`${customerKey}: ${productName} (매칭: ${matchedProductName}) ${quantityPerProduct}개 구매, 단위 탄소 감축: ${carbonReduction.toFixed(2)} → ${effectiveCarbonReduction.toFixed(2)}, 제품별 탄소 감축: ${carbonReductionForThisProduct.toFixed(2)}`);
         }
       }
       
@@ -1166,16 +1174,20 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
       // 처음 5개 행에 대해 고객 매칭 과정 로깅
       if (i <= 5) {
         console.log(`Customer Row ${i}: customerId="${customerId}", customerName="${customerName}", customerKey="${customerKey}"`);
-        console.log(`  매칭된 탄소 점수:`, customerCarbonStats[customerKey] || '없음');
+        console.log(`  원본 탄소 점수: ${row[carbonScoreIdx]?.toFixed(2) || '없음'}, 조정된 점수: ${customerCarbonStats[customerKey]?.toFixed(2) || '없음'}, 등급: ${getCarbonGrade(customerCarbonStats[customerKey] || 0)}`);
       }
       
       const carbonScore = customerCarbonStats[customerKey] || 0;
-      const carbonGrade = getCarbonGrade(carbonScore);
+      
+      // 점수 스케일링: 원본 점수를 10으로 나누어 적절한 범위로 조정
+      const scaledScore = Math.round(carbonScore / 10 * 100) / 100; // 소수점 둘째 자리까지
+      
+      const carbonGrade = getCarbonGrade(scaledScore);
       
       // 탄소 감축 점수 업데이트
       updateRequests.push({
         range: `'${customerSheetName}'!${getColumnLetter(carbonScoreIdx + 1)}${i + 1}`,
-        values: [[Math.round(carbonScore * 100) / 100]] // 소수점 둘째 자리까지
+        values: [[scaledScore]]
       });
       
       // 탄소 감축 등급 업데이트
@@ -1184,7 +1196,7 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
         values: [[carbonGrade]]
       });
       
-      if (carbonScore > 0) {
+      if (scaledScore > 0) {
         updatedCustomers++;
       }
     }
