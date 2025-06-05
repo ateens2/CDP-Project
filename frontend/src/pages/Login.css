@@ -63,7 +63,7 @@ body {
   padding: 40px;
   border: 1px solid #c8e6c9; /* 연한 초록색 테두리 */
   border-radius: 8px;
-  text-align: center;
+  text-align: center !important;
   background-color: #fff;
 }
 
@@ -133,6 +133,7 @@ body {
   border-radius: 4px;
   cursor: pointer;
   font-size: 16px;
+  justify-content: center;
 }
 
 .login-button:hover {

@@ -113,7 +113,7 @@ const CustomerEditer = ({
       'Bronze': '#cd7f32', 
       'Silver': '#c0c0c0',
       'Gold': '#ffd700',
-      'Platinum': '#e5e4e2',
+      'Platinum': '#4a90e2',
       'Diamond': '#b9f2ff'
     };
     return colors[grade] || '#f8f9fa';
