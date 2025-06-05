@@ -35,7 +35,10 @@ const Category = ({ sheet }) => {
   return (
     <div className="sidebar">
       <nav>
-        <div className="menu-header">MAIN MENU</div>
+        <div className="menu-header">
+          <i className="fa fa-leaf"></i>
+          MAIN MENU
+        </div>
         <button
           className={`sidebar-item ${
             activeCategory === "고객 관리" ? "active" : ""
@@ -51,6 +54,7 @@ const Category = ({ sheet }) => {
             }
           }}
         >
+          <i className="fa fa-users"></i>
           고객 관리
         </button>
         <button
@@ -67,8 +71,36 @@ const Category = ({ sheet }) => {
             }
           }}
         >
+          <i className="fa fa-chart-line"></i>
           매출 분석
         </button>
+        
+        <div className="menu-section-divider"></div>
+        
+        <div className="menu-subheader">
+          <i className="fa fa-cog"></i>
+          WORKSPACE
+        </div>
+        <button
+          className={`sidebar-item ${
+            pathname === "/" ? "active" : ""
+          }`}
+          onClick={() => navigate("/")}
+        >
+          <i className="fa fa-home"></i>
+          대시보드
+        </button>
+        {user && user.role === "admin" && (
+          <button
+            className={`sidebar-item ${
+              pathname === "/audit-log" ? "active" : ""
+            }`}
+            onClick={() => navigate("/audit-log")}
+          >
+            <i className="fa fa-history"></i>
+            감사 로그
+          </button>
+        )}
       </nav>
     </div>
   );
