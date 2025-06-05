@@ -29,7 +29,10 @@ const CustomerManagement = () => {
   const [activeSheetId, setActiveSheetId] = useState(null);
   // 검색
   const [search, setSearch] = useState("");
-  const onChangeSearch = (e) => setSearch(e.target.value);
+  const onChangeSearch = (e) => {
+    setSearch(e.target.value);
+    setCurrentPage(1); // 검색어 변경 시 첫 페이지로 이동
+  };
   // 편집 패널 및 리스트 컨테이너 refs (클릭아웃 감지용)
   const detailPanelRef = useRef(null);
   const listContainerRef = useRef(null);

@@ -332,11 +332,14 @@ function parseNewMappingOutput(output) {
 
 // 제품 판매 기록 시트 데이터 생성
 function createSalesSheetData(originalHeaders, originalRows, salesMapping) {
-  // 제품 판매 기록 시트 헤더 정의
+  // 제품 판매 기록 시트 헤더 정의 - 고객ID 추가
   const salesHeaders = [
-    '주문_번호', '주문자명', '주문_일자', '거래_완료_일자', 
+    '주문_번호', '고객ID', '주문자명', '주문_일자', '거래_완료_일자', 
     '상품명', '단가', '수량', '총_주문_금액', '주문_상태'
   ];
+  
+  console.log('Original headers:', originalHeaders);
+  console.log('Sales mapping:', salesMapping);
   
   // 매핑 인덱스 생성
   const mappingIndices = {};
@@ -352,14 +355,38 @@ function createSalesSheetData(originalHeaders, originalRows, salesMapping) {
     }
   });
   
+  // 고객ID가 매핑되지 않았다면 원본 헤더에서 고객ID 관련 필드를 찾아서 강제 매핑
+  if (!mappingIndices['고객ID']) {
+    const customerIdFields = ['고객ID', 'customer_id', '고객 ID', 'customerID', 'CustomerId', 'Customer ID'];
+    for (const field of customerIdFields) {
+      const index = originalHeaders.findIndex(h => 
+        h.toLowerCase().replace(/[^a-z가-힣0-9]/g, '') === field.toLowerCase().replace(/[^a-z가-힣0-9]/g, '')
+      );
+      if (index !== -1) {
+        mappingIndices['고객ID'] = index;
+        console.log(`고객ID 필드를 강제 매핑: ${originalHeaders[index]} -> 고객ID`);
+        break;
+      }
+    }
+  }
+  
+  console.log('Final mapping indices:', mappingIndices);
+  
   // 데이터 변환
   const salesData = [salesHeaders];
   
-  originalRows.forEach(row => {
+  originalRows.forEach((row, rowIndex) => {
     const newRow = salesHeaders.map(targetField => {
       const index = mappingIndices[targetField];
       return index !== undefined ? (row[index] || '') : '';
     });
+    
+    // 디버깅: 첫 5개 행의 고객ID 값 확인
+    if (rowIndex < 5) {
+      const customerIdIndex = mappingIndices['고객ID'];
+      const customerNameIndex = mappingIndices['주문자명'];
+      console.log(`Row ${rowIndex + 1}: 고객ID="${customerIdIndex !== undefined ? row[customerIdIndex] : 'N/A'}", 주문자명="${customerNameIndex !== undefined ? row[customerNameIndex] : 'N/A'}"`);
+    }
     
     // 예외 처리: 거래_완료_일자가 없으면 주문_일자 + 3일
     if (!mappingIndices['거래_완료_일자'] && mappingIndices['주문_일자']) {
@@ -387,6 +414,7 @@ function createSalesSheetData(originalHeaders, originalRows, salesMapping) {
     salesData.push(newRow);
   });
   
+  console.log(`제품 판매 기록 시트 데이터 생성 완료: ${salesData.length - 1}개 행`);
   return salesData;
 }
 
@@ -397,6 +425,8 @@ function createCustomerSheetData(originalHeaders, originalRows, customerMapping)
     '고객ID', '고객명', '연락처', '이메일', '가입일',
     '마지막_구매일', '총_구매_금액', '총_구매_횟수', '탄소_감축_등급', '탄소_감축_점수'
   ];
+  
+  console.log('Customer mapping:', customerMapping);
   
   // 매핑 인덱스 생성 (계산용 필드 제외)
   const mappingIndices = {};
@@ -414,21 +444,68 @@ function createCustomerSheetData(originalHeaders, originalRows, customerMapping)
     }
   });
   
+  // 고객ID가 매핑되지 않았다면 원본 헤더에서 고객ID 관련 필드를 찾아서 강제 매핑
+  if (!mappingIndices['고객ID']) {
+    const customerIdFields = ['고객ID', 'customer_id', '고객 ID', 'customerID', 'CustomerId', 'Customer ID'];
+    for (const field of customerIdFields) {
+      const index = originalHeaders.findIndex(h => 
+        h.toLowerCase().replace(/[^a-z가-힣0-9]/g, '') === field.toLowerCase().replace(/[^a-z가-힣0-9]/g, '')
+      );
+      if (index !== -1) {
+        mappingIndices['고객ID'] = index;
+        console.log(`고객ID 필드를 강제 매핑: ${originalHeaders[index]} -> 고객ID`);
+        break;
+      }
+    }
+  }
+  
+  // 고객명이 매핑되지 않았다면 강제 매핑
+  if (!mappingIndices['고객명']) {
+    const customerNameFields = ['고객명', 'customer_name', '고객 이름', 'customerName', '이름', 'name', '주문자명', '주문자 이름'];
+    for (const field of customerNameFields) {
+      const index = originalHeaders.findIndex(h => 
+        h.toLowerCase().replace(/[^a-z가-힣0-9]/g, '') === field.toLowerCase().replace(/[^a-z가-힣0-9]/g, '')
+      );
+      if (index !== -1) {
+        mappingIndices['고객명'] = index;
+        console.log(`고객명 필드를 강제 매핑: ${originalHeaders[index]} -> 고객명`);
+        break;
+      }
+    }
+  }
+  
+  console.log('Customer mapping indices:', mappingIndices);
+  
   // 고객 데이터 중복 제거 및 변환
   const customerData = [customerHeaders];
   const seenCustomers = new Set();
+  let addedCustomers = 0;
   
-  originalRows.forEach(row => {
-    // 고객 식별자 생성 (고객ID 또는 고객명 기준)
+  originalRows.forEach((row, rowIndex) => {
+    // 고객 식별자 생성 - 고객ID 우선, 고객명 차선
     const customerIdIndex = mappingIndices['고객ID'];
     const customerNameIndex = mappingIndices['고객명'];
     const customerId = customerIdIndex !== undefined ? row[customerIdIndex] : '';
     const customerName = customerNameIndex !== undefined ? row[customerNameIndex] : '';
     
-    const customerKey = customerId || customerName;
+    // 디버깅: 첫 5개 행의 고객 정보 확인
+    if (rowIndex < 5) {
+      console.log(`Customer Row ${rowIndex + 1}: 고객ID="${customerId}", 고객명="${customerName}"`);
+    }
     
-    if (customerKey && !seenCustomers.has(customerKey)) {
+    // 고객ID가 있으면 고객ID로, 없으면 고객명으로 고유성 판단
+    let customerKey = '';
+    if (customerId && customerId.trim() !== '') {
+      customerKey = `ID:${customerId.trim()}`;
+    } else if (customerName && customerName.trim() !== '') {
+      customerKey = `NAME:${customerName.trim()}`;
+    } else {
+      return; // 식별할 수 없는 고객은 스킵
+    }
+    
+    if (!seenCustomers.has(customerKey)) {
       seenCustomers.add(customerKey);
+      addedCustomers++;
       
       const newRow = customerHeaders.map(targetField => {
         if (['마지막_구매일', '총_구매_금액', '총_구매_횟수', '탄소_감축_등급', '탄소_감축_점수'].includes(targetField)) {
@@ -443,6 +520,7 @@ function createCustomerSheetData(originalHeaders, originalRows, customerMapping)
     }
   });
   
+  console.log(`고객 정보 시트 데이터 생성 완료: ${addedCustomers}명의 고유 고객 추가`);
   return customerData;
 }
 
@@ -614,7 +692,7 @@ async function calculateCustomerPurchaseStats(sheets, spreadsheetId, salesSheetN
     // 제품 판매 기록 시트 데이터 가져오기
     const salesResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${salesSheetName}'!A:I`, // A부터 I열까지 (주문 상태까지, 수량 컬럼 추가로 인해 H에서 I로 변경)
+      range: `'${salesSheetName}'!A:J`, // A부터 J열까지 (고객ID 추가로 인해 I에서 J로 변경)
     });
     
     const salesData = salesResponse.data.values || [];
@@ -639,14 +717,19 @@ async function calculateCustomerPurchaseStats(sheets, spreadsheetId, salesSheetN
     const salesHeaders = salesData[0];
     const customerHeaders = customerData[0];
     
-    // 필요한 컬럼 인덱스 찾기
+    console.log('Sales headers:', salesHeaders);
+    console.log('Customer headers:', customerHeaders);
+    
+    // 필요한 컬럼 인덱스 찾기 - 고객ID 추가
     const salesIndices = {
+      고객ID: salesHeaders.indexOf('고객ID'),
       주문자명: salesHeaders.indexOf('주문자명'),
       총_주문_금액: salesHeaders.indexOf('총_주문_금액'),
       주문_일자: salesHeaders.indexOf('주문_일자')
     };
     
     const customerIndices = {
+      고객ID: customerHeaders.indexOf('고객ID'),
       고객명: customerHeaders.indexOf('고객명'),
       총_구매_금액: customerHeaders.indexOf('총_구매_금액'),
       총_구매_횟수: customerHeaders.indexOf('총_구매_횟수'),
@@ -656,47 +739,91 @@ async function calculateCustomerPurchaseStats(sheets, spreadsheetId, salesSheetN
     console.log('Sales indices:', salesIndices);
     console.log('Customer indices:', customerIndices);
     
-    // 고객별 구매 통계 계산
+    // 고객별 구매 통계 계산 - 고객ID 기준으로 변경
     const customerStats = {};
+    
+    console.log('고객 구매 통계 계산 시작...');
     
     // 제품 판매 기록을 순회하며 고객별 통계 집계
     for (let i = 1; i < salesData.length; i++) {
       const row = salesData[i];
+      
+      // 고객 식별: 고객ID가 있으면 우선 사용, 없으면 주문자명 사용
+      let customerKey = '';
+      const customerId = row[salesIndices.고객ID] || '';
       const customerName = row[salesIndices.주문자명] || '';
+      
+      if (customerId) {
+        customerKey = `ID:${customerId}`;
+      } else if (customerName) {
+        customerKey = `NAME:${customerName}`;
+      } else {
+        continue; // 고객 식별 불가능한 행은 스킵
+      }
+      
+      // 디버깅: 처음 5개 행의 고객 정보 출력
+      if (i <= 5) {
+        console.log(`Sales Row ${i}: customerId="${customerId}", customerName="${customerName}", customerKey="${customerKey}"`);
+      }
+      
       const totalAmount = parseFloat(row[salesIndices.총_주문_금액] || 0);
       const orderDate = row[salesIndices.주문_일자] || '';
       
-      if (!customerName) continue;
-      
-      if (!customerStats[customerName]) {
-        customerStats[customerName] = {
+      if (!customerStats[customerKey]) {
+        customerStats[customerKey] = {
           totalAmount: 0,
           totalCount: 0,
           lastPurchaseDate: ''
         };
       }
       
-      customerStats[customerName].totalAmount += totalAmount;
-      customerStats[customerName].totalCount += 1;
+      customerStats[customerKey].totalAmount += totalAmount;
+      customerStats[customerKey].totalCount += 1;
       
       // 마지막 구매일 업데이트 (더 최근 날짜로)
-      if (orderDate && (!customerStats[customerName].lastPurchaseDate || 
-          new Date(orderDate) > new Date(customerStats[customerName].lastPurchaseDate))) {
-        customerStats[customerName].lastPurchaseDate = orderDate;
+      if (orderDate && (!customerStats[customerKey].lastPurchaseDate || 
+          new Date(orderDate) > new Date(customerStats[customerKey].lastPurchaseDate))) {
+        customerStats[customerKey].lastPurchaseDate = orderDate;
       }
     }
     
-    console.log('계산된 고객 통계:', customerStats);
+    console.log('계산된 고객 통계 (처음 5개):', Object.keys(customerStats).slice(0, 5).reduce((obj, key) => {
+      obj[key] = customerStats[key];
+      return obj;
+    }, {}));
+    console.log(`총 ${Object.keys(customerStats).length}명의 고객 통계 계산 완료`);
     
     // 고객 정보 시트 업데이트
     const updates = [];
+    let matchedCustomers = 0;
+    
+    console.log('고객 정보 시트 업데이트 시작...');
     
     for (let i = 1; i < customerData.length; i++) {
       const row = customerData[i];
+      
+      // 고객 정보 시트에서도 고객ID 우선, 고객명 차선으로 매칭
+      let customerKey = '';
+      const customerId = row[customerIndices.고객ID] || '';
       const customerName = row[customerIndices.고객명] || '';
       
-      if (customerName && customerStats[customerName]) {
-        const stats = customerStats[customerName];
+      if (customerId) {
+        customerKey = `ID:${customerId}`;
+      } else if (customerName) {
+        customerKey = `NAME:${customerName}`;
+      } else {
+        continue; // 고객 식별 불가능한 행은 스킵
+      }
+      
+      // 디버깅: 처음 5개 행의 고객 정보와 매칭 결과 출력
+      if (i <= 5) {
+        console.log(`Customer Row ${i}: customerId="${customerId}", customerName="${customerName}", customerKey="${customerKey}"`);
+        console.log(`  매칭된 통계:`, customerStats[customerKey] || '없음');
+      }
+      
+      if (customerStats[customerKey]) {
+        const stats = customerStats[customerKey];
+        matchedCustomers++;
         
         // 업데이트할 셀 범위와 값 준비
         const rowNumber = i + 1; // Google Sheets는 1부터 시작
@@ -730,6 +857,7 @@ async function calculateCustomerPurchaseStats(sheets, spreadsheetId, salesSheetN
     // 배치 업데이트 실행
     if (updates.length > 0) {
       console.log(`${updates.length}개의 셀을 업데이트합니다.`);
+      console.log(`매칭된 고객 수: ${matchedCustomers}명`);
       
       await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId,
@@ -797,6 +925,8 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
       }
     });
     
+    console.log(`탄소 배출량 데이터 ${Object.keys(productCarbonMap).length}개 제품 로드 완료`);
+    
     // 카테고리별 기준 제품 탄소 배출량 맵 생성
     const categoryBaseMap = {};
     categoryLines.forEach(line => {
@@ -808,10 +938,12 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
       }
     });
     
+    console.log(`카테고리 기준 배출량 ${Object.keys(categoryBaseMap).length}개 카테고리 로드 완료`);
+    
     // 판매 데이터 가져오기
     const salesResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${salesSheetName}'!A:I`, // A부터 I열까지 (주문 상태까지, 수량 컬럼 추가로 인해 H에서 I로 변경)
+      range: `'${salesSheetName}'!A:J`, // A부터 J열까지 (고객ID 추가로 인해 I에서 J로 변경)
     });
     
     const salesRows = salesResponse.data.values || [];
@@ -841,34 +973,57 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
     
     // 필요한 컬럼 인덱스 찾기
     const orderNameIdx = salesHeaders.findIndex(h => h === '주문자명');
+    const orderIdIdx = salesHeaders.findIndex(h => h === '고객ID');
     const productNameIdx = salesHeaders.findIndex(h => h === '상품명');
     const unitPriceIdx = salesHeaders.findIndex(h => h === '단가');
     const quantityIdx = salesHeaders.findIndex(h => h === '수량');
     const totalAmountIdx = salesHeaders.findIndex(h => h === '총_주문_금액');
+    const customerIdIdx = customerHeaders.findIndex(h => h === '고객ID');
     const customerNameIdx = customerHeaders.findIndex(h => h === '고객명');
     const carbonScoreIdx = customerHeaders.findIndex(h => h === '탄소_감축_점수');
     const carbonGradeIdx = customerHeaders.findIndex(h => h === '탄소_감축_등급');
     
     console.log('Found indices:', {
-      orderNameIdx, productNameIdx, unitPriceIdx, quantityIdx, totalAmountIdx,
-      customerNameIdx, carbonScoreIdx, carbonGradeIdx
+      orderNameIdx, orderIdIdx, productNameIdx, unitPriceIdx, quantityIdx, totalAmountIdx,
+      customerIdIdx, customerNameIdx, carbonScoreIdx, carbonGradeIdx
     });
     
-    if (orderNameIdx === -1 || productNameIdx === -1 || totalAmountIdx === -1 || customerNameIdx === -1 || carbonScoreIdx === -1 || carbonGradeIdx === -1) {
+    if (productNameIdx === -1 || totalAmountIdx === -1 || carbonScoreIdx === -1 || carbonGradeIdx === -1) {
       console.log('필요한 컬럼을 찾을 수 없습니다.');
       return;
     }
     
-    // 고객별 탄소 감축 점수 계산
+    // 고객별 탄소 감축 점수 계산 - 고객ID 기준으로 변경
     const customerCarbonStats = {};
+    let processedRows = 0;
+    let foundProducts = 0;
     
     // 판매 데이터를 순회하며 고객별 구매 정보 수집
     for (let i = 1; i < salesRows.length; i++) {
       const row = salesRows[i];
       if (row.length === 0) continue;
       
-      const customerName = row[orderNameIdx]?.toString().trim();
-      const productName = row[productNameIdx]?.toString().trim();
+      processedRows++;
+      
+      // 고객 식별: 고객ID가 있으면 우선 사용, 없으면 주문자명 사용
+      let customerKey = '';
+      const customerId = orderIdIdx !== -1 ? row[orderIdIdx]?.toString().trim() : '';
+      const customerName = orderNameIdx !== -1 ? row[orderNameIdx]?.toString().trim() : '';
+      
+      if (customerId) {
+        customerKey = `ID:${customerId}`;
+      } else if (customerName) {
+        customerKey = `NAME:${customerName}`;
+      } else {
+        continue; // 고객 식별 불가능한 행은 스킵
+      }
+      
+      // 처음 5개 행에 대해 고객 식별 과정 로깅
+      if (i <= 5) {
+        console.log(`Row ${i}: customerId="${customerId}", customerName="${customerName}", customerKey="${customerKey}"`);
+      }
+      
+      const productNames = row[productNameIdx]?.toString().trim();
       const unitPrice = parseFloat(row[unitPriceIdx]?.toString().replace(/[^0-9.-]/g, '') || '0');
       const totalAmount = parseFloat(row[totalAmountIdx]?.toString().replace(/[^0-9.-]/g, '') || '0');
       
@@ -880,49 +1035,102 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
         quantity = Math.round(totalAmount / unitPrice);
       }
       
-      if (!customerName || !productName || totalAmount <= 0 || quantity <= 0) continue;
+      if (!productNames || totalAmount <= 0 || quantity <= 0) continue;
       
-      // 제품의 탄소 배출량 정보 찾기
-      let productInfo = productCarbonMap[productName];
-      if (!productInfo) {
-        // 정확한 매칭이 안 되면 유사한 제품명 찾기
-        let bestMatch = null;
+      // 여러 제품이 쉼표로 구분되어 있는 경우 처리
+      const productList = productNames.split(',').map(p => p.trim()).filter(p => p);
+      const quantityPerProduct = Math.max(1, Math.floor(quantity / productList.length)); // 제품 개수로 수량 분배
+      
+      let totalCarbonReductionForCustomer = 0;
+      
+      for (const productName of productList) {
+        if (!productName) continue;
         
-        for (const [mapProductName, info] of Object.entries(productCarbonMap)) {
-          if (productName.includes(mapProductName.replace(/\s/g, '')) || 
-              mapProductName.includes(productName.replace(/\s/g, ''))) {
-            bestMatch = info;
-            console.log(`제품 "${productName}"을 "${mapProductName}"으로 매칭했습니다.`);
-            break;
+        // 제품의 탄소 배출량 정보 찾기 - 정확한 매칭 우선 시도
+        let productInfo = productCarbonMap[productName];
+        let matchedProductName = productName;
+        
+        if (!productInfo) {
+          // 정확한 매칭이 안 되면 유사한 제품명 찾기
+          let bestMatch = null;
+          let bestMatchScore = 0;
+          let bestMatchedName = '';
+          
+          for (const [mapProductName, info] of Object.entries(productCarbonMap)) {
+            // 공백 제거하고 비교
+            const cleanProductName = productName.replace(/\s/g, '').toLowerCase();
+            const cleanMapProductName = mapProductName.replace(/\s/g, '').toLowerCase();
+            
+            // 포함 관계 확인
+            let matchScore = 0;
+            if (cleanProductName.includes(cleanMapProductName)) {
+              matchScore = cleanMapProductName.length;
+            } else if (cleanMapProductName.includes(cleanProductName)) {
+              matchScore = cleanProductName.length;
+            }
+            
+            // 부분 단어 매칭도 시도
+            if (matchScore === 0) {
+              const productWords = cleanProductName.split(/[^가-힣a-z0-9]/);
+              const mapWords = cleanMapProductName.split(/[^가-힣a-z0-9]/);
+              
+              for (const word of productWords) {
+                if (word.length >= 2 && mapWords.some(mw => mw.includes(word) || word.includes(mw))) {
+                  matchScore = word.length;
+                  break;
+                }
+              }
+            }
+            
+            if (matchScore > bestMatchScore) {
+              bestMatch = info;
+              bestMatchScore = matchScore;
+              bestMatchedName = mapProductName;
+            }
           }
+          
+          if (bestMatch) {
+            productInfo = bestMatch;
+            matchedProductName = bestMatchedName;
+            console.log(`제품 "${productName}"을 "${bestMatchedName}"으로 매칭했습니다.`);
+            foundProducts++;
+          } else {
+            console.log(`제품 "${productName}"의 탄소 배출량 정보를 찾을 수 없습니다.`);
+            continue;
+          }
+        } else {
+          foundProducts++;
         }
         
-        if (!bestMatch) {
-          console.log(`제품 "${productName}"의 탄소 배출량 정보를 찾을 수 없습니다.`);
+        // 카테고리의 기준 제품 탄소 배출량 찾기
+        const baseEmission = categoryBaseMap[productInfo.category];
+        if (baseEmission === undefined) {
+          console.log(`카테고리 "${productInfo.category}"의 기준 제품 탄소 배출량을 찾을 수 없습니다.`);
           continue;
         }
-        productInfo = bestMatch;
+        
+        // 탄소 감축 점수 계산 (기준 배출량 - 제품 배출량)
+        const carbonReduction = baseEmission - productInfo.totalEmission;
+        const carbonReductionForThisProduct = carbonReduction * quantityPerProduct;
+        
+        totalCarbonReductionForCustomer += carbonReductionForThisProduct;
+        
+        if (i <= 5 || (foundProducts % 100 === 0)) { // 처음 5개 행 또는 100개마다 로깅
+          console.log(`${customerKey}: ${productName} (매칭: ${matchedProductName}) ${quantityPerProduct}개 구매, 단위 탄소 감축: ${carbonReduction.toFixed(2)}, 제품별 탄소 감축: ${carbonReductionForThisProduct.toFixed(2)}`);
+        }
       }
       
-      // 카테고리의 기준 제품 탄소 배출량 찾기
-      const baseEmission = categoryBaseMap[productInfo.category];
-      if (baseEmission === undefined) {
-        console.log(`카테고리 "${productInfo.category}"의 기준 제품 탄소 배출량을 찾을 수 없습니다.`);
-        continue;
+      if (totalCarbonReductionForCustomer !== 0) {
+        if (!customerCarbonStats[customerKey]) {
+          customerCarbonStats[customerKey] = 0;
+        }
+        
+        customerCarbonStats[customerKey] += totalCarbonReductionForCustomer;
       }
-      
-      // 탄소 감축 점수 계산 (기준 배출량 - 제품 배출량)
-      const carbonReduction = baseEmission - productInfo.totalEmission;
-      const totalCarbonReduction = carbonReduction * quantity;
-      
-      if (!customerCarbonStats[customerName]) {
-        customerCarbonStats[customerName] = 0;
-      }
-      
-      customerCarbonStats[customerName] += totalCarbonReduction;
-      
-      console.log(`${customerName}: ${productName} ${quantity}개 구매, 단위 탄소 감축: ${carbonReduction.toFixed(2)}, 총 탄소 감축: ${totalCarbonReduction.toFixed(2)}`);
     }
+    
+    console.log(`처리된 행: ${processedRows}, 매칭된 제품: ${foundProducts}`);
+    console.log(`계산된 고객 수: ${Object.keys(customerCarbonStats).length}`);
     
     // 탄소 감축 등급 계산 함수
     function getCarbonGrade(score) {
@@ -936,15 +1144,32 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
     
     // 고객 시트 업데이트 준비
     const updateRequests = [];
+    let updatedCustomers = 0;
     
     for (let i = 1; i < customerRows.length; i++) {
       const row = customerRows[i];
       if (row.length === 0) continue;
       
-      const customerName = row[customerNameIdx]?.toString().trim();
-      if (!customerName) continue;
+      // 고객 정보 시트에서도 고객ID 우선, 고객명 차선으로 매칭
+      let customerKey = '';
+      const customerId = customerIdIdx !== -1 ? row[customerIdIdx]?.toString().trim() : '';
+      const customerName = customerNameIdx !== -1 ? row[customerNameIdx]?.toString().trim() : '';
       
-      const carbonScore = customerCarbonStats[customerName] || 0;
+      if (customerId) {
+        customerKey = `ID:${customerId}`;
+      } else if (customerName) {
+        customerKey = `NAME:${customerName}`;
+      } else {
+        continue; // 고객 식별 불가능한 행은 스킵
+      }
+      
+      // 처음 5개 행에 대해 고객 매칭 과정 로깅
+      if (i <= 5) {
+        console.log(`Customer Row ${i}: customerId="${customerId}", customerName="${customerName}", customerKey="${customerKey}"`);
+        console.log(`  매칭된 탄소 점수:`, customerCarbonStats[customerKey] || '없음');
+      }
+      
+      const carbonScore = customerCarbonStats[customerKey] || 0;
       const carbonGrade = getCarbonGrade(carbonScore);
       
       // 탄소 감축 점수 업데이트
@@ -958,6 +1183,10 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
         range: `'${customerSheetName}'!${getColumnLetter(carbonGradeIdx + 1)}${i + 1}`,
         values: [[carbonGrade]]
       });
+      
+      if (carbonScore > 0) {
+        updatedCustomers++;
+      }
     }
     
     // 배치 업데이트 실행
@@ -971,6 +1200,7 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
       });
       
       console.log(`${updateRequests.length / 2}명의 고객 탄소 감축 데이터가 업데이트되었습니다.`);
+      console.log(`탄소 점수가 있는 고객: ${updatedCustomers}명`);
     }
     
   } catch (error) {
