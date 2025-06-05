@@ -161,7 +161,7 @@ const DataAnalytics = () => {
 
       try {
         await window.gapi.client.load("sheets", "v4");
-        const rangeName = `'제품_판매_기록'!B2:H`;
+        const rangeName = `'제품_판매_기록'!B2:I`;
         const response =
           await window.gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: sheet.sheetId,
@@ -171,10 +171,10 @@ const DataAnalytics = () => {
 
         const rows = values
           .map((row) => {
-            const customerName = row[0]; // B열
-            const dateStr = row[2]; // D열
-            const productName = row[3];
-            const amountStr = row[5]; // H열
+            const customerName = row[1]; // B열
+            const dateStr = row[3]; // D열
+            const productName = row[4];
+            const amountStr = row[6]; // H열
             if (!customerName || !productName || !dateStr || !amountStr)
               return null;
             const date = parseDate(dateStr);
