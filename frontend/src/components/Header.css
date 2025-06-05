@@ -271,22 +271,13 @@
 
 .hamburger-line {
   width: 22px;
-  height: 3px;
+  height: 2px;
   background-color: #22c55e;
   border-radius: 1.5px;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: center;
   display: block;
   flex-shrink: 0;
-}
-
-/* 각 라인이 정확히 같은 크기가 되도록 강제 */
-.hamburger-line:nth-child(1),
-.hamburger-line:nth-child(2),
-.hamburger-line:nth-child(3) {
-  width: 22px;
-  height: 3px;
-  background-color: #22c55e;
 }
 
 /* 햄버거 아이콘 hover 시 라인들이 살짝 벌어지는 효과 */
@@ -300,7 +291,7 @@
 
 /* 햄버거 아이콘 활성화 애니메이션 */
 .hamburger-icon.active .hamburger-line:nth-child(1) {
-  transform: translateY(8px) rotate(45deg);
+  transform: translateY(7.5px) rotate(45deg);
 }
 
 .hamburger-icon.active .hamburger-line:nth-child(2) {
@@ -309,7 +300,7 @@
 }
 
 .hamburger-icon.active .hamburger-line:nth-child(3) {
-  transform: translateY(-8px) rotate(-45deg);
+  transform: translateY(-7.5px) rotate(-45deg);
 }
 
 /* 활성 상태에서는 hover 효과 비활성화 */
