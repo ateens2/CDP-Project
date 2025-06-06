@@ -139,7 +139,7 @@ const CustomerManagement = () => {
         return;
       }
 
-      const rangeAll = `'${name}'!A1:J`; // 고객_정보 시트는 A부터 J열까지
+      const rangeAll = `'${name}'!A1:K`; // 고객_정보 시트는 A부터 K열까지 (생년월일 추가)
       console.log("데이터 범위:", rangeAll);
 
       const resp = await window.gapi.client.sheets.spreadsheets.values.get({
@@ -167,6 +167,7 @@ const CustomerManagement = () => {
         "고객명",
         "연락처",
         "이메일",
+        "생년월일",
         "가입일",
         "마지막_구매일",
         "총_구매_금액",
@@ -267,6 +268,7 @@ const CustomerManagement = () => {
       고객명: "",
       연락처: "",
       이메일: "",
+      생년월일: "",
       가입일: new Date().toISOString().split("T")[0], // 오늘 날짜
       마지막_구매일: "",
       총_구매_금액: "0",
@@ -301,7 +303,7 @@ const CustomerManagement = () => {
         const values = sheetHeaders.map((h) => selectedCustomer[h] ?? "");
         await window.gapi.client.sheets.spreadsheets.values.append({
           spreadsheetId: sheet.sheetId,
-          range: `'${sheetName}'!A1:J`,
+          range: `'${sheetName}'!A1:K`,
           valueInputOption: "RAW",
           insertDataOption: "INSERT_ROWS",
           resource: { values: [values] },

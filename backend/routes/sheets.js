@@ -422,7 +422,7 @@ function createSalesSheetData(originalHeaders, originalRows, salesMapping) {
 function createCustomerSheetData(originalHeaders, originalRows, customerMapping) {
   // 고객 정보 시트 헤더 정의
   const customerHeaders = [
-    '고객ID', '고객명', '연락처', '이메일', '가입일',
+    '고객ID', '고객명', '연락처', '이메일', '생년월일', '가입일',
     '마지막_구매일', '총_구매_금액', '총_구매_횟수', '탄소_감축_등급', '탄소_감축_점수'
   ];
   
@@ -430,7 +430,7 @@ function createCustomerSheetData(originalHeaders, originalRows, customerMapping)
   
   // 매핑 인덱스 생성 (계산용 필드 제외)
   const mappingIndices = {};
-  const basicFields = ['고객ID', '고객명', '연락처', '이메일', '가입일'];
+  const basicFields = ['고객ID', '고객명', '연락처', '이메일', '생년월일', '가입일'];
   
   basicFields.forEach(targetField => {
     for (const [originalField, mappedField] of Object.entries(customerMapping)) {
@@ -704,7 +704,7 @@ async function calculateCustomerPurchaseStats(sheets, spreadsheetId, salesSheetN
     // 고객 정보 시트 데이터 가져오기
     const customerResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${customerSheetName}'!A:J`, // 고객 정보 시트의 모든 컬럼
+      range: `'${customerSheetName}'!A:K`, // 고객 정보 시트의 모든 컬럼 (생년월일 추가로 K열까지)
     });
     
     const customerData = customerResponse.data.values || [];
@@ -955,7 +955,7 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
     // 고객 데이터 가져오기
     const customerResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${customerSheetName}'!A:J`, // A부터 J열까지 (탄소 감축 점수까지)
+      range: `'${customerSheetName}'!A:K`, // A부터 K열까지 (생년월일 추가로 탄소 감축 점수까지)
     });
     
     const customerRows = customerResponse.data.values || [];
