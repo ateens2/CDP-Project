@@ -60,6 +60,10 @@ const CarbonImpactDashboard = () => {
   const [customerSegmentData, setCustomerSegmentData] = useState(null);
   const [detailedCarbonData, setDetailedCarbonData] = useState(null);
   const [availableYears, setAvailableYears] = useState([]);
+  
+  // 업데이트 관련 상태
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   // 탄소 감축 데이터 로드 (자동 시트 생성 포함)
   const loadCarbonReductionData = async () => {
@@ -213,12 +217,20 @@ const CarbonImpactDashboard = () => {
       
       if (error.message && error.message.includes('탄소_감축 시트가 없습니다')) {
         errorMessage = error.message;
-      } else if (error.status === 400) {
-        errorMessage = '탄소_감축 시트의 범위가 올바르지 않습니다. 시트 구조를 확인해주세요.';
-      } else if (error.status === 404) {
-        errorMessage = '시트를 찾을 수 없습니다. 시트 ID와 권한을 확인해주세요.';
+      } else if (error.status === 401) {
+        errorMessage = '🔐 Google Sheets 인증이 만료되었습니다. 로그아웃 후 다시 로그인해주세요.';
       } else if (error.status === 403) {
-        errorMessage = '시트에 접근할 권한이 없습니다.';
+        errorMessage = '📋 시트에 접근할 권한이 없습니다. 시트 소유자에게 편집 권한을 요청하세요.';
+      } else if (error.status === 404) {
+        errorMessage = '📄 시트를 찾을 수 없습니다. 시트 ID와 링크를 확인해주세요.';
+      } else if (error.status === 400) {
+        errorMessage = '📊 탄소_감축 시트의 범위가 올바르지 않습니다. 시트 구조를 확인해주세요.';
+      } else if (error.message && error.message.includes('원본 데이터를 로드할 수 없습니다')) {
+        errorMessage = '📋 기본 데이터 시트(제품_판매_기록, 고객_정보)를 찾을 수 없습니다. 시트 이름과 구조를 확인해주세요.';
+      } else if (error.message && error.message.includes('NetworkError')) {
+        errorMessage = '🌐 네트워크 연결에 문제가 있습니다. 인터넷 연결을 확인해주세요.';
+      } else if (error.message) {
+        errorMessage = `❌ ${error.message}`;
       }
       
       setError(errorMessage);
@@ -500,19 +512,118 @@ const CarbonImpactDashboard = () => {
       // 나무 심기 환산 (1그루당 22kg CO2 흡수)
       const treeEquivalent = Math.round(totalCarbonReduction / 22);
       
-      // 친환경 제품 비율 (실제 데이터 기반)
-      const thisYearEcoCount = thisYearSales.filter(sale => {
-        const normalizedSaleProduct = normalizeProductName(sale.productName || '');
-        const matchedProduct = carbonEmissionData.find(carbon => 
-          normalizeProductName(carbon.productName) === normalizedSaleProduct ||
-          normalizeProductName(carbon.productName).includes(normalizedSaleProduct) ||
-          normalizedSaleProduct.includes(normalizeProductName(carbon.productName))
-        );
-        return matchedProduct && matchedProduct.weightFactor < 1.0;
-      }).length;
+      // 친환경 제품 판매율 계산 (개선된 로직)
+      let totalSalesQuantity = 0;
+      let totalSalesAmount = 0;
+      let ecoSalesQuantity = 0;
+      let ecoSalesAmount = 0;
+      let ecoSalesCount = 0;
+      let totalSalesCount = thisYearSales.length;
       
-      const ecoProductRatio = thisYearSales.length > 0 ? 
-        Math.round((thisYearEcoCount / thisYearSales.length) * 100 * 10) / 10 : 0;
+      // 매칭 성공률 추적
+      let matchedCount = 0;
+      let unmatchedProducts = new Set();
+      
+      thisYearSales.forEach(sale => {
+        const saleQuantity = sale.quantity || 1;
+        const saleAmount = sale.amount || 0;
+        
+        totalSalesQuantity += saleQuantity;
+        totalSalesAmount += saleAmount;
+        
+        const normalizedSaleProduct = normalizeProductName(sale.productName || '');
+        
+        // 개선된 제품 매칭 로직
+        let matchedProduct = null;
+        
+        // 1차: 정확한 제품명 매칭
+        matchedProduct = carbonEmissionData.find(carbon => 
+          normalizeProductName(carbon.productName) === normalizedSaleProduct
+        );
+        
+        // 2차: 키워드 기반 매칭 (더 엄격하게)
+        if (!matchedProduct && normalizedSaleProduct.length > 2) {
+          matchedProduct = carbonEmissionData.find(carbon => {
+            const normalizedCarbonProduct = normalizeProductName(carbon.productName);
+            // 최소 3글자 이상 매칭되어야 함
+            return (normalizedCarbonProduct.includes(normalizedSaleProduct) && normalizedSaleProduct.length >= 3) ||
+                   (normalizedSaleProduct.includes(normalizedCarbonProduct) && normalizedCarbonProduct.length >= 3);
+          });
+        }
+        
+        // 3차: 카테고리 + 키워드 조합 매칭
+        if (!matchedProduct && sale.category) {
+          const categoryMap = {
+            '컵류': ['컵', 'cup', '텀블러'],
+            '포장': ['포장', '봉투', 'bag', '박스'],
+            '병류': ['병', '보틀', 'bottle', '물병'],
+            '용기': ['용기', 'container', '도시락']
+          };
+          
+          const saleCategory = sale.category.toLowerCase();
+          for (const [carbonCategory, keywords] of Object.entries(categoryMap)) {
+            if (keywords.some(keyword => saleCategory.includes(keyword) || normalizedSaleProduct.includes(keyword))) {
+              matchedProduct = carbonEmissionData.find(carbon => 
+                carbon.category && carbon.category.includes(carbonCategory)
+              );
+              if (matchedProduct) break;
+            }
+          }
+        }
+        
+        if (matchedProduct) {
+          matchedCount++;
+          
+          // 친환경 제품 기준: weightFactor < 0.8 (더 엄격한 기준)
+          const isEcoProduct = matchedProduct.weightFactor < 0.8 && matchedProduct.reductionEffect > 0;
+          
+          if (isEcoProduct) {
+            ecoSalesQuantity += saleQuantity;
+            ecoSalesAmount += saleAmount;
+            ecoSalesCount++;
+          }
+        } else {
+          unmatchedProducts.add(sale.productName);
+        }
+      });
+      
+      // 다양한 기준으로 친환경 제품 비율 계산
+      const ecoRatioByCount = totalSalesCount > 0 ? 
+        Math.round((ecoSalesCount / totalSalesCount) * 100 * 10) / 10 : 0;
+      
+      const ecoRatioByQuantity = totalSalesQuantity > 0 ? 
+        Math.round((ecoSalesQuantity / totalSalesQuantity) * 100 * 10) / 10 : 0;
+      
+      const ecoRatioByAmount = totalSalesAmount > 0 ? 
+        Math.round((ecoSalesAmount / totalSalesAmount) * 100 * 10) / 10 : 0;
+      
+      // 매칭률 계산
+      const matchingRate = totalSalesCount > 0 ? 
+        Math.round((matchedCount / totalSalesCount) * 100 * 10) / 10 : 0;
+      
+      // 가중 평균으로 최종 비율 계산 (수량 40% + 매출 40% + 건수 20%)
+      const ecoProductRatio = Math.round(
+        (ecoRatioByQuantity * 0.4 + ecoRatioByAmount * 0.4 + ecoRatioByCount * 0.2) * 10
+      ) / 10;
+      
+      console.log('친환경 제품 판매율 상세 분석:', {
+        총판매건수: totalSalesCount,
+        총판매수량: totalSalesQuantity,
+        총매출액: totalSalesAmount,
+        친환경판매건수: ecoSalesCount,
+        친환경판매수량: ecoSalesQuantity,
+        친환경매출액: ecoSalesAmount,
+        건수기준비율: ecoRatioByCount + '%',
+        수량기준비율: ecoRatioByQuantity + '%',
+        매출기준비율: ecoRatioByAmount + '%',
+        최종가중비율: ecoProductRatio + '%',
+        제품매칭률: matchingRate + '%',
+        매칭안된제품수: unmatchedProducts.size
+      });
+      
+      if (unmatchedProducts.size > 0) {
+        console.log('매칭되지 않은 제품들:', Array.from(unmatchedProducts).slice(0, 10));
+      }
       
       // 고객 환경 참여도 (실제 데이터 기반)
       const uniqueCustomers = [...new Set(thisYearSales.map(sale => sale.customerId || sale.customerName))];
@@ -754,6 +865,120 @@ const CarbonImpactDashboard = () => {
     }
   };
 
+  // 탄소_감축 시트 업데이트 기능
+  const updateCarbonReductionSheet = async () => {
+    if (!sheet || !window.gapi?.client || isUpdating) {
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      setError(null);
+      console.log('탄소_감축 시트 업데이트 시작...');
+      
+      // 1. 원본 데이터 다시 로드
+      const rawData = await loadRawData();
+      if (!rawData) {
+        throw new Error('원본 데이터를 로드할 수 없습니다.');
+      }
+      
+      // 2. 최신 데이터로 다시 계산
+      const calculatedData = calculateCarbonSummary(
+        rawData.salesData, 
+        rawData.carbonEmissionData, 
+        rawData.customerData
+      );
+      
+      if (!calculatedData) {
+        throw new Error('탄소 감축 데이터 계산에 실패했습니다.');
+      }
+      
+      // 3. 기존 시트 데이터 업데이트
+      const { summaryData, detailedData, categoryData, segmentData } = calculatedData;
+      
+      // 월별 데이터, 카테고리별 데이터, 세그먼트 데이터 준비
+      const monthlyValues = [['년월', '감축량']];
+      detailedData.forEach(item => {
+        monthlyValues.push([item.month, item.carbonReduction]);
+      });
+
+      const categoryValues = [['카테고리', '감축량']];
+      categoryData.forEach(item => {
+        categoryValues.push([item.category, item.totalCarbonReduction]);
+      });
+
+      const segmentValues = [['세그먼트', '고객수']];
+      segmentValues.push(['champions', segmentData.champions]);
+      segmentValues.push(['loyalists', segmentData.loyalists]);
+      segmentValues.push(['potentials', segmentData.potentials]);
+      segmentValues.push(['newcomers', segmentData.newcomers]);
+
+      // 4. 시트 데이터 업데이트 (기존 데이터 덮어쓰기)
+      await window.gapi.client.sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: sheet.sheetId,
+        resource: {
+          valueInputOption: 'RAW',
+          data: [
+            {
+              range: "'탄소_감축'!A2:B5",
+              values: [
+                ['총_탄소_감축량', summaryData.totalCarbonReduction],
+                ['나무_그루_수', summaryData.treeEquivalent],
+                ['친환경_제품_비율', summaryData.ecoProductRatio],
+                ['고객_환경_참여도', summaryData.customerEngagement]
+              ]
+            },
+            {
+              range: `'탄소_감축'!D1:E${Math.max(monthlyValues.length, 50)}`,
+              values: monthlyValues.concat(Array(Math.max(0, 50 - monthlyValues.length)).fill(['', '']))
+            },
+            {
+              range: `'탄소_감축'!G1:H${Math.max(categoryValues.length, 20)}`,
+              values: categoryValues.concat(Array(Math.max(0, 20 - categoryValues.length)).fill(['', '']))
+            },
+            {
+              range: `'탄소_감축'!J1:K${Math.max(segmentValues.length, 10)}`,
+              values: segmentValues.concat(Array(Math.max(0, 10 - segmentValues.length)).fill(['', '']))
+            }
+          ]
+        }
+      });
+
+      // 5. 상태 업데이트
+      setSummaryData({
+        ...summaryData,
+        lastUpdated: new Date().toISOString()
+      });
+      setDetailedCarbonData(calculatedData.detailedData);
+      setCategoryData({ categories: calculatedData.categoryData });
+      setCustomerSegmentData({ segments: calculatedData.segmentData });
+      setAvailableYears(calculatedData.years);
+      setLastUpdated(new Date().toISOString());
+      
+      console.log('탄소_감축 시트 업데이트 완료');
+
+    } catch (error) {
+      console.error('탄소_감축 시트 업데이트 실패:', error);
+      let errorMessage = '데이터 업데이트에 실패했습니다.';
+      
+      if (error.status === 401) {
+        errorMessage = '🔐 Google Sheets 인증이 만료되었습니다. 로그아웃 후 다시 로그인해주세요.';
+      } else if (error.status === 403) {
+        errorMessage = '📋 시트 편집 권한이 없습니다. 시트 소유자에게 편집 권한을 요청하세요.';
+      } else if (error.status === 404) {
+        errorMessage = '📄 업데이트할 시트를 찾을 수 없습니다.';
+      } else if (error.message && error.message.includes('원본 데이터를 로드할 수 없습니다')) {
+        errorMessage = '📋 기본 데이터 시트에서 최신 데이터를 읽을 수 없습니다.';
+      } else if (error.message) {
+        errorMessage = `❌ ${error.message}`;
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   // 월별 추이 데이터 계산 (탄소_감축 시트 데이터 기반)
   const calculateTrendData = (period = '6months') => {
     console.log('추이 데이터 계산 시작...');
@@ -863,9 +1088,44 @@ const CarbonImpactDashboard = () => {
             <div className="error-container">
               <h3>⚠️ 오류 발생</h3>
               <p>{error}</p>
-              <button onClick={() => loadAllData()}>
-                다시 시도
-              </button>
+              <div className="error-actions">
+                <button 
+                  className="retry-button"
+                  onClick={() => {
+                    setError(null);
+                    loadCarbonReductionData();
+                  }}
+                >
+                  다시 시도
+                </button>
+                <button 
+                  className="refresh-button"
+                  onClick={() => window.location.reload()}
+                >
+                  페이지 새로고침
+                </button>
+              </div>
+              <div className="error-details">
+                <details>
+                  <summary>기술적 세부사항</summary>
+                  <div className="error-info">
+                    <p><strong>가능한 원인:</strong></p>
+                    <ul>
+                      <li>Google Sheets API 인증 문제 (401 오류)</li>
+                      <li>시트 접근 권한 부족</li>
+                      <li>네트워크 연결 문제</li>
+                      <li>API 키 만료 또는 잘못된 설정</li>
+                    </ul>
+                    <p><strong>해결 방법:</strong></p>
+                    <ul>
+                      <li>1. 로그아웃 후 다시 로그인</li>
+                      <li>2. 시트 공유 권한 확인</li>
+                      <li>3. 브라우저 캐시 및 쿠키 삭제</li>
+                      <li>4. 다른 브라우저에서 시도</li>
+                    </ul>
+                  </div>
+                </details>
+              </div>
             </div>
           </div>
         </div>
@@ -880,13 +1140,39 @@ const CarbonImpactDashboard = () => {
         <div className="carbon-dashboard">
           {/* 헤더 섹션 */}
           <div className="dashboard-header">
-            <h1>🌱 탄소 감축 현황 대시보드</h1>
-            <p>친환경 제품 판매를 통한 탄소 감축 효과를 확인하세요</p>
-            <div className="last-updated">
-              마지막 업데이트: {summaryData?.lastUpdated ? 
-                new Date(summaryData.lastUpdated).toLocaleString('ko-KR') : 
-                '데이터 없음'
-              }
+            <div className="header-content">
+              <div className="header-text">
+                <h1>🌱 탄소 감축 현황 대시보드</h1>
+                <p>친환경 제품 판매를 통한 탄소 감축 효과를 확인하세요</p>
+              </div>
+              <div className="header-actions">
+                <div className="last-updated">
+                  마지막 업데이트: {
+                    lastUpdated ? 
+                    new Date(lastUpdated).toLocaleString('ko-KR') : 
+                    summaryData?.lastUpdated ? 
+                    new Date(summaryData.lastUpdated).toLocaleString('ko-KR') : 
+                    '데이터 없음'
+                  }
+                </div>
+                <button 
+                  className={`update-button ${isUpdating ? 'updating' : ''}`}
+                  onClick={updateCarbonReductionSheet}
+                  disabled={isUpdating}
+                  title="최신 판매 데이터를 반영하여 탄소 감축 정보를 업데이트합니다"
+                >
+                  {isUpdating ? (
+                    <>
+                      <div className="update-spinner"></div>
+                      업데이트 중...
+                    </>
+                  ) : (
+                    <>
+                      🔄 데이터 업데이트
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 

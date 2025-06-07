@@ -50,16 +50,34 @@
   box-shadow: var(--carbon-shadow);
 }
 
-.dashboard-header h1 {
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.header-text {
+  flex: 1;
+}
+
+.header-text h1 {
   margin: 0 0 10px 0;
   font-size: 2.5rem;
   font-weight: bold;
 }
 
-.dashboard-header p {
-  margin: 0 0 15px 0;
+.header-text p {
+  margin: 0;
   font-size: 1.1rem;
   opacity: 0.9;
+}
+
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1rem;
 }
 
 .last-updated {
@@ -69,6 +87,64 @@
   padding: 8px 12px;
   border-radius: 6px;
   display: inline-block;
+  white-space: nowrap;
+}
+
+.update-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+}
+
+.update-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.update-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.update-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.update-button.updating {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+  animation: pulse 2s infinite;
+}
+
+.update-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }
 
 /* 로딩 및 에러 상태 */
@@ -99,22 +175,96 @@
 
 .error-container h3 {
   color: var(--carbon-error);
-  margin-bottom: 10px;
+  margin-bottom: 15px;
+  font-size: 1.4rem;
 }
 
-.error-container button {
+.error-container p {
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.error-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.retry-button, .refresh-button {
   background: var(--carbon-primary);
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
+  padding: 12px 24px;
+  border-radius: 8px;
   cursor: pointer;
-  margin-top: 15px;
-  transition: background 0.3s ease;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.error-container button:hover {
+.retry-button:hover {
   background: var(--carbon-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.refresh-button {
+  background: #6b7280;
+}
+
+.refresh-button:hover {
+  background: #4b5563;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.error-details {
+  margin-top: 20px;
+  text-align: left;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.error-details summary {
+  cursor: pointer;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+  font-weight: 600;
+  color: #495057;
+  transition: background 0.2s ease;
+}
+
+.error-details summary:hover {
+  background: #e9ecef;
+}
+
+.error-info {
+  padding: 15px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+}
+
+.error-info p {
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.error-info ul {
+  margin: 0 0 15px 20px;
+  padding: 0;
+}
+
+.error-info li {
+  margin-bottom: 5px;
+  line-height: 1.4;
 }
 
 /* 요약 카드 섹션 */
@@ -624,8 +774,27 @@
     padding: 20px;
   }
   
-  .dashboard-header h1 {
+  .header-content {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.5rem;
+  }
+
+  .header-actions {
+    align-items: center;
+    width: 100%;
+  }
+  
+  .header-text h1 {
     font-size: 2rem;
+  }
+
+  .update-button {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+    width: 100%;
+    max-width: 200px;
   }
   
   .chart-header {
