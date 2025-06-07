@@ -305,6 +305,18 @@
   background-color: #3367d6;
 }
 
+.carbon-impact-btn {
+  background-color: #e8f5e9 !important;
+  color: #2d5a27 !important;
+  border: 2px solid #4a7c3c !important;
+}
+
+.carbon-impact-btn:hover {
+  background-color: #4a7c3c !important;
+  color: white !important;
+  transform: translateY(-1px);
+}
+
 .change-sheet-btn {
   background-color: #f8f9fa;
   color: #4285f4;

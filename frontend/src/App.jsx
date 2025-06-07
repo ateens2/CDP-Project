@@ -17,6 +17,7 @@ import CustomerManagement from "./pages/CustomerManagement";
 import DataAnalytics from "./pages/DataAnalytics";
 import UserDetailPage from "./pages/UserDetailPage";
 import AuditLogPage from "./pages/AuditLogPage";
+import CarbonImpactDashboard from "./pages/CarbonImpactDashboard";
 
 function App() {
   const { gapiLoaded } = useGoogleAuth();
@@ -48,6 +49,7 @@ function App() {
           <Route path="/sheet-editor" element={<SheetEditor />} />
           <Route path="/customer-management" element={<CustomerManagement />} />
           <Route path="/data-analytics" element={<DataAnalytics />} />
+          <Route path="/carbon-impact" element={<CarbonImpactDashboard />} />
           <Route path="/profile" element={<UserDetailPage />} />
           <Route path="/audit-log" element={<AuditLogPage />} />
           <Route path="/" element={user ? <Workspace /> : <InitialPage />} />

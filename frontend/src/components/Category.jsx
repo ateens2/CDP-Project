@@ -13,6 +13,8 @@ const Category = ({ sheet }) => {
     ? "고객 관리"
     : pathname.includes("/data-analytics")
     ? "매출 분석"
+    : pathname.includes("/carbon-impact")
+    ? "탄소 감축"
     : "";
 
   const [activeCategory, setActiveCategory] = useState(defaultCategory);
@@ -73,6 +75,23 @@ const Category = ({ sheet }) => {
         >
           <i className="fa fa-chart-line"></i>
           매출 분석
+        </button>
+        <button
+          className={`sidebar-item ${
+            activeCategory === "탄소 감축" ? "active" : ""
+          }`}
+          onClick={() => {
+            if (!user) {
+              CustomToast.error("로그인 후 이용해 주세요.", {
+                position: "bottom-right",
+              });
+            } else {
+              handleCategoryClick("탄소 감축", "/carbon-impact");
+            }
+          }}
+        >
+          <i className="fa fa-leaf"></i>
+          탄소 감축
         </button>
         
         <div className="menu-section-divider"></div>
