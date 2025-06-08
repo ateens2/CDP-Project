@@ -1698,3 +1698,73 @@
 .summary-card:hover::before {
   opacity: 1;
 }
+
+/* 더미데이터 토글 버튼 스타일 */
+.dummy-data-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  border: 1px solid #333;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.dummy-data-toggle:hover {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: #555;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.dummy-data-toggle button {
+  background: var(--carbon-text-light);
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  min-width: 45px;
+}
+
+.dummy-data-toggle button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.dummy-data-toggle button.active {
+  background: var(--carbon-success);
+  animation: pulse-green 2s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(76, 175, 80, 0);
+  }
+}
+
+/* 반응형 - 모바일에서는 더 작게 */
+@media (max-width: 767px) {
+  .dummy-data-toggle {
+    bottom: 15px;
+    right: 15px;
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+
+  .dummy-data-toggle button {
+    padding: 3px 6px;
+    font-size: 10px;
+    min-width: 40px;
+  }
+}
