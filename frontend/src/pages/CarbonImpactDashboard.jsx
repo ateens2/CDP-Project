@@ -399,10 +399,11 @@ const CarbonImpactDashboard = () => {
           
           try {
             const date = parseDate(dateStr);
+            const completionDate = completionDateStr ? parseDate(completionDateStr) : date;
             const amount = Number(amountStr.replace(/[,₩\s]/g, "")) || 0;
             
             return { 
-              orderId, customerId, customerName, date, productName, 
+              orderId, customerId, customerName, date, completionDate, productName, 
               quantity, amount, unitPrice, status, completionDateStr,
               productCarbonReductions, totalCarbonReduction
             };
@@ -521,14 +522,20 @@ const CarbonImpactDashboard = () => {
     if (salesData.length > 0 && carbonEmissionData.length > 0) {
       console.log('탄소 감축량 계산 중...');
       
-      // 사용 가능한 년도 목록 생성
-      const years = [...new Set(salesData.map(sale => sale.date.getFullYear()))].sort((a, b) => b - a);
-      console.log('사용 가능한 년도:', years);
+      // 사용 가능한 년도 목록 생성 (거래_완료_일자 기준)
+      const years = [...new Set(salesData.map(sale => {
+        const targetDate = sale.completionDate || sale.date;
+        return targetDate ? targetDate.getFullYear() : null;
+      }).filter(year => year !== null))].sort((a, b) => b - a);
+      console.log('사용 가능한 년도 (거래_완료_일자 기준):', years);
       
-      // 올해 데이터로 요약 계산
+      // 올해 데이터로 요약 계산 (거래_완료_일자 기준)
       const currentYear = new Date().getFullYear();
-      const thisYearSales = salesData.filter(sale => sale.date.getFullYear() === currentYear);
-      console.log(`${currentYear}년 판매 데이터:`, thisYearSales.length);
+      const thisYearSales = salesData.filter(sale => {
+        const targetDate = sale.completionDate || sale.date;
+        return targetDate && targetDate.getFullYear() === currentYear;
+      });
+      console.log(`${currentYear}년 판매 데이터 (거래_완료_일자 기준):`, thisYearSales.length);
       
       // 제품_판매_기록 시트의 총_탄소_감축_점수 컬럼을 기반으로 탄소 감축량 계산
       const allMonthlyReduction = {};
@@ -536,23 +543,27 @@ const CarbonImpactDashboard = () => {
       let ecoProductCount = 0;
       let totalProductCount = 0;
       
-
-      
       // 시트의 총_탄소_감축_점수 컬럼 값들을 합산하여 총 탄소 감축량 계산
       salesData.forEach(sale => {
         totalProductCount++;
         
         // 시트에서 계산된 탄소 감축 점수를 그대로 사용
         const carbonReduction = sale.totalCarbonReduction || 0;
+        
+        // 총 탄소 감축량 누적 (탄소 감축 점수가 있는 경우만)
         if (carbonReduction > 0) {
           ecoProductCount++;
           totalCarbonReduction += carbonReduction;
-          
-          // 월별 감축량 집계
-          const monthKey = `${sale.date.getFullYear()}-${String(sale.date.getMonth() + 1).padStart(2, '0')}`;
+        }
+        
+        // 거래_완료_일자를 기준으로 년월별 탄소 감축량 집계 (모든 주문에 대해)
+        const targetDate = sale.completionDate || sale.date;
+        if (targetDate) {
+          const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
           if (!allMonthlyReduction[monthKey]) {
             allMonthlyReduction[monthKey] = 0;
           }
+          // 해당 월에 총_탄소_감축_점수를 누적 (음수든 양수든 상관없이)
           allMonthlyReduction[monthKey] += carbonReduction;
         }
       });
@@ -563,6 +574,18 @@ const CarbonImpactDashboard = () => {
         totalReduction: totalCarbonReduction,
         계산방식: '제품_판매_기록 시트의 총_탄소_감축_점수 컬럼 합산',
         적용기준: '탄소 감축 점수가 0보다 큰 제품만'
+      });
+      
+      console.log('월별 탄소 감축량 집계 결과 (거래_완료_일자 기준):', {
+        총월별데이터: Object.keys(allMonthlyReduction).length,
+        월별상세: Object.entries(allMonthlyReduction)
+          .sort(([a], [b]) => b.localeCompare(a))
+          .slice(0, 6)
+          .map(([month, reduction]) => ({
+            월: month,
+            감축량: Math.round(reduction * 100) / 100
+          })),
+        집계방식: '거래_완료_일자를 기준으로 년월별 총_탄소_감축_점수 합산'
       });
       
       // 나무 심기 환산 (1그루당 22kg CO2 흡수)
@@ -607,7 +630,7 @@ const CarbonImpactDashboard = () => {
         (ecoRatioByQuantity * 0.4 + ecoRatioByAmount * 0.4 + ecoRatioByCount * 0.2) * 10
       ) / 10;
       
-      console.log('친환경 제품 판매율 상세 분석 (시트 기반, 올해 데이터):', {
+      console.log('친환경 제품 판매율 상세 분석 (시트 기반, 올해 데이터, 거래_완료_일자 기준):', {
         총판매건수: totalSalesCount,
         총판매수량: totalSalesQuantity,
         총매출액: totalSalesAmount,
@@ -686,7 +709,7 @@ const CarbonImpactDashboard = () => {
         (basicRatio + activeRatio + dedicatedRatio) / 3 * 10
       ) / 10;
       
-      console.log('고객 환경 참여도 상세 분석 (시트 기반, 전체 기간 데이터):', {
+      console.log('고객 환경 참여도 상세 분석 (시트 기반, 전체 기간 데이터, 거래_완료_일자 기준):', {
         총고객수: totalCustomers,
         기본참여고객: `${basicParticipants}명 (1회 이상 친환경 제품 구매)`,
         활성참여고객: `${activeParticipants}명 (3회 이상 친환경 제품 구매)`,
