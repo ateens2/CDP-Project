@@ -510,8 +510,8 @@ function createSalesSheetData(originalHeaders, originalRows, salesMapping) {
       const productEmission = productInfo.emissionFactor * productInfo.weightFactor;
       const carbonReduction = (baseEmission - productEmission) * quantity;
       
-      // 소수점 둘째 자리까지 반올림
-      const roundedReduction = Math.round(carbonReduction * 100) / 100;
+      // 더 정확한 소수점 둘째 자리 반올림 (부동소수점 오차 방지)
+      const roundedReduction = parseFloat(carbonReduction.toFixed(2));
       
       productCarbonReductions.push(roundedReduction.toString());
       totalCarbonReduction += roundedReduction;
@@ -519,7 +519,7 @@ function createSalesSheetData(originalHeaders, originalRows, salesMapping) {
     
     return {
       productReductions: productCarbonReductions.join(','),
-      totalReduction: Math.round(totalCarbonReduction * 100) / 100
+      totalReduction: parseFloat(totalCarbonReduction.toFixed(2))
     };
   }
 
