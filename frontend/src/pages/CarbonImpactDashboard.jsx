@@ -189,7 +189,7 @@ const CarbonImpactDashboard = () => {
         // 계산된 데이터를 바로 상태에 설정
         setSummaryData(calculatedData.summaryData);
         setDetailedCarbonData(calculatedData.detailedData);
-        setCategoryData({ categories: calculatedData.categoryData });
+        setCategoryData({ ecoFriendlyData: calculatedData.ecoFriendlyData });
         setCustomerSegmentData({ segments: calculatedData.segmentData });
         setEngagementDetails(calculatedData.engagementDetails);
         setAvailableYears(calculatedData.years);
@@ -204,13 +204,13 @@ const CarbonImpactDashboard = () => {
         ranges: [
           "'탄소_감축'!A2:B5",   // 요약 데이터
           "'탄소_감축'!D2:E50",  // 월별 감축량 데이터
-          "'탄소_감축'!G2:H20",  // 카테고리별 감축량
+          "'탄소_감축'!G2:H20",  // 친환경 제품 판매율 상세 데이터
           "'탄소_감축'!J2:K10",  // 고객 세그먼트
           "'탄소_감축'!M2:O5"    // 고객 참여도 상세 분석
         ]
       });
 
-      const [summaryRange, monthlyRange, categoryRange, segmentRange, engagementRange] = carbonReductionResponse.result.valueRanges;
+      const [summaryRange, monthlyRange, ecoFriendlyRange, segmentRange, engagementRange] = carbonReductionResponse.result.valueRanges;
       
       // 요약 데이터 파싱
       const summaryValues = summaryRange.values || [];
@@ -240,15 +240,26 @@ const CarbonImpactDashboard = () => {
         }))
         .sort((a, b) => b.month.localeCompare(a.month));
       
-      // 카테고리별 데이터 파싱
-      const categoryValues = categoryRange.values || [];
-      const categoryData = categoryValues
-        .filter(row => row.length >= 2 && row[0] && row[1])
-        .map(row => ({
-          category: row[0],
-          totalCarbonReduction: parseFloat(row[1]) || 0
-        }))
-        .sort((a, b) => b.totalCarbonReduction - a.totalCarbonReduction);
+      // 친환경 제품 판매율 상세 데이터 파싱
+      const ecoFriendlyValues = ecoFriendlyRange.values || [];
+      const ecoFriendlyMap = {};
+      ecoFriendlyValues.forEach(row => {
+        if (row.length >= 2) {
+          ecoFriendlyMap[row[0]] = parseFloat(row[1]) || 0;
+        }
+      });
+      
+      const ecoFriendlyData = {
+        totalSalesCount: ecoFriendlyMap['총_판매_건수'] || 0,
+        totalSalesQuantity: ecoFriendlyMap['총_판매_수량'] || 0,
+        totalSalesAmount: ecoFriendlyMap['총_매출액'] || 0,
+        ecoSalesCount: ecoFriendlyMap['친환경_판매_건수'] || 0,
+        ecoSalesQuantity: ecoFriendlyMap['친환경_판매_수량'] || 0,
+        ecoSalesAmount: ecoFriendlyMap['친환경_매출액'] || 0,
+        ecoRatioByCount: ecoFriendlyMap['건수_기준_비율'] || 0,
+        ecoRatioByQuantity: ecoFriendlyMap['수량_기준_비율'] || 0,
+        ecoRatioByAmount: ecoFriendlyMap['매출_기준_비율'] || 0
+      };
       
       // 고객 세그먼트 데이터 파싱
       const segmentValues = segmentRange.values || [];
@@ -299,7 +310,7 @@ const CarbonImpactDashboard = () => {
       console.log('탄소 감축 데이터 로드 완료:', {
         summary: summaryData,
         monthly: monthlyData.length,
-        categories: categoryData.length,
+        ecoFriendlyData: ecoFriendlyData,
         segments: segmentData,
         years: years
       });
@@ -307,7 +318,7 @@ const CarbonImpactDashboard = () => {
       // 상태 업데이트
       setSummaryData(summaryData);
       setDetailedCarbonData(monthlyData);
-      setCategoryData({ categories: categoryData });
+      setCategoryData({ ecoFriendlyData: ecoFriendlyData });
       setCustomerSegmentData({ segments: segmentData });
       setEngagementDetails(engagementDetails);
       setAvailableYears(years);
@@ -591,7 +602,17 @@ const CarbonImpactDashboard = () => {
       // 나무 심기 환산 (1그루당 22kg CO2 흡수)
       const treeEquivalent = Math.round(totalCarbonReduction / 22);
       
-      // 친환경 제품 판매율 계산 (시트의 탄소 감축 점수 기반, 올해 데이터 기준)
+      // 친환경 제품 판매율 계산 (Weight_factor 기반, 올해 데이터 기준)
+      // 탄소배출량 데이터를 기반으로 제품별 weight_factor 정보 추출
+      const productWeightMap = {};
+      carbonEmissionData.forEach(product => {
+        if (product.productName && product.weightFactor !== undefined) {
+          productWeightMap[product.productName] = product.weightFactor;
+        }
+      });
+      
+      console.log('제품별 Weight Factor 맵 생성 완료:', Object.keys(productWeightMap).length, '개 제품');
+      
       let totalSalesQuantity = 0;
       let totalSalesAmount = 0;
       let ecoSalesQuantity = 0;
@@ -606,9 +627,33 @@ const CarbonImpactDashboard = () => {
         totalSalesQuantity += saleQuantity;
         totalSalesAmount += saleAmount;
         
-        // 시트의 총_탄소_감축_점수가 0보다 크면 친환경 제품으로 분류
-        const carbonReduction = sale.totalCarbonReduction || 0;
-        if (carbonReduction > 0) {
+        // 판매된 제품들을 쉼표로 분리하여 각각 확인
+        const productNames = (sale.productName || '').split(',').map(p => p.trim()).filter(p => p);
+        let hasEcoProduct = false;
+        
+        for (const productName of productNames) {
+          // 정확한 매칭 시도
+          let weightFactor = productWeightMap[productName];
+          
+          // 정확한 매칭 실패시 유사한 제품명으로 매칭 시도
+          if (weightFactor === undefined) {
+            const matchedProduct = Object.keys(productWeightMap).find(key => 
+              key.includes(productName) || productName.includes(key) ||
+              (productName.length > 2 && key.includes(productName.substring(0, 3)))
+            );
+            if (matchedProduct) {
+              weightFactor = productWeightMap[matchedProduct];
+            }
+          }
+          
+          // weight_factor가 0.6 이하면 친환경 제품으로 판단
+          if (weightFactor !== undefined && weightFactor <= 0.6) {
+            hasEcoProduct = true;
+            break;
+          }
+        }
+        
+        if (hasEcoProduct) {
           ecoSalesQuantity += saleQuantity;
           ecoSalesAmount += saleAmount;
           ecoSalesCount++;
@@ -630,7 +675,7 @@ const CarbonImpactDashboard = () => {
         (ecoRatioByQuantity * 0.4 + ecoRatioByAmount * 0.4 + ecoRatioByCount * 0.2) * 10
       ) / 10;
       
-      console.log('친환경 제품 판매율 상세 분석 (시트 기반, 올해 데이터, 거래_완료_일자 기준):', {
+      console.log('친환경 제품 판매율 상세 분석 (Weight_factor 기반, 올해 데이터, 거래_완료_일자 기준):', {
         총판매건수: totalSalesCount,
         총판매수량: totalSalesQuantity,
         총매출액: totalSalesAmount,
@@ -642,10 +687,11 @@ const CarbonImpactDashboard = () => {
         매출기준비율: ecoRatioByAmount + '%',
         최종가중비율: ecoProductRatio + '%',
         가중평균공식: '건수(20%) + 수량(40%) + 매출(40%)',
-        판별기준: '시트의 총_탄소_감축_점수 > 0'
+        판별기준: 'weight_factor <= 0.6',
+        활용데이터: 'CSV 파일의 제품별 weight_factor'
       });
       
-      // 고객 환경 참여도 (전체 기간 데이터 기반 - 시트의 탄소 감축 점수 기반)
+      // 고객 환경 참여도 (전체 기간 데이터 기반 - weight_factor 기준)
       const uniqueCustomers = [...new Set(salesData.map(sale => sale.customerId || sale.customerName))];
       
       // 각 고객의 친환경 제품 구매 내역 분석 (전체 기간)
@@ -666,9 +712,33 @@ const CarbonImpactDashboard = () => {
         customerEcoAnalysis[customerId].totalPurchases++;
         customerEcoAnalysis[customerId].totalAmount += sale.amount || 0;
         
-        // 시트의 총_탄소_감축_점수가 0보다 크면 친환경 제품으로 분류
-        const carbonReduction = sale.totalCarbonReduction || 0;
-        if (carbonReduction > 0) {
+        // weight_factor 기준으로 친환경 제품 여부 판단
+        const productNames = (sale.productName || '').split(',').map(p => p.trim()).filter(p => p);
+        let hasEcoProduct = false;
+        
+        for (const productName of productNames) {
+          // 정확한 매칭 시도
+          let weightFactor = productWeightMap[productName];
+          
+          // 정확한 매칭 실패시 유사한 제품명으로 매칭 시도
+          if (weightFactor === undefined) {
+            const matchedProduct = Object.keys(productWeightMap).find(key => 
+              key.includes(productName) || productName.includes(key) ||
+              (productName.length > 2 && key.includes(productName.substring(0, 3)))
+            );
+            if (matchedProduct) {
+              weightFactor = productWeightMap[matchedProduct];
+            }
+          }
+          
+          // weight_factor가 0.6 이하면 친환경 제품으로 판단
+          if (weightFactor !== undefined && weightFactor <= 0.6) {
+            hasEcoProduct = true;
+            break;
+          }
+        }
+        
+        if (hasEcoProduct) {
           customerEcoAnalysis[customerId].ecoFriendlyPurchases++;
           customerEcoAnalysis[customerId].ecoFriendlyAmount += sale.amount || 0;
         }
@@ -709,7 +779,7 @@ const CarbonImpactDashboard = () => {
         (basicRatio + activeRatio + dedicatedRatio) / 3 * 10
       ) / 10;
       
-      console.log('고객 환경 참여도 상세 분석 (시트 기반, 전체 기간 데이터, 거래_완료_일자 기준):', {
+      console.log('고객 환경 참여도 상세 분석 (Weight_factor 기준, 전체 기간 데이터, 거래_완료_일자 기준):', {
         총고객수: totalCustomers,
         기본참여고객: `${basicParticipants}명 (1회 이상 친환경 제품 구매)`,
         활성참여고객: `${activeParticipants}명 (3회 이상 친환경 제품 구매)`,
@@ -720,7 +790,8 @@ const CarbonImpactDashboard = () => {
         최종참여도: customerEngagement + '%',
         계산공식: '(기본 + 활성 + 헌신적) / 3',
         평균계산: `(${Math.round(basicRatio * 10) / 10} + ${Math.round(activeRatio * 10) / 10} + ${Math.round(dedicatedRatio * 10) / 10}) / 3`,
-        판별기준: '시트의 총_탄소_감축_점수 > 0'
+        판별기준: 'weight_factor <= 0.6',
+        활용데이터: 'CSV 파일의 제품별 weight_factor'
       });
       
       // 처음 5명의 고객 분석 결과 출력 (디버깅용)
@@ -759,49 +830,20 @@ const CarbonImpactDashboard = () => {
         }))
         .sort((a, b) => b.month.localeCompare(a.month)); // 최신순 정렬
       
-      // 카테고리별 데이터 계산 (시트의 탄소 감축 점수 기반)
-      const categoryReductions = {};
-      
-      salesData.forEach(sale => {
-        const carbonReduction = sale.totalCarbonReduction || 0;
-        if (carbonReduction > 0) {
-          // 제품명에서 첫 번째 단어를 카테고리로 추정
-          const productName = sale.productName || '';
-          let category = '기타';
-          
-          // 카테고리 매핑 로직
-          if (productName.includes('컵') || productName.includes('텀블러')) {
-            category = '컵류';
-          } else if (productName.includes('포장') || productName.includes('봉투') || productName.includes('박스')) {
-            category = '포장';
-          } else if (productName.includes('병') || productName.includes('보틀') || productName.includes('물병')) {
-            category = '병류';
-          } else if (productName.includes('용기') || productName.includes('도시락')) {
-            category = '용기';
-          } else {
-            // 첫 번째 단어를 카테고리로 사용
-            const firstWord = productName.split(/[,\s]/)[0];
-            if (firstWord && firstWord.length > 1) {
-              category = firstWord;
-            }
-          }
-          
-          if (!categoryReductions[category]) {
-            categoryReductions[category] = 0;
-          }
-          categoryReductions[category] += carbonReduction;
-        }
-      });
-      
-      // 카테고리별 데이터 정렬
-      const categoryData = Object.entries(categoryReductions)
-        .map(([category, totalCarbonReduction]) => ({
-          category,
-          totalCarbonReduction: parseFloat(totalCarbonReduction.toFixed(2))
-        }))
-        .sort((a, b) => b.totalCarbonReduction - a.totalCarbonReduction);
+      // 친환경 제품 판매율 상세 데이터 (탄소_감축 시트 저장용)
+      const ecoFriendlyData = {
+        totalSalesCount: totalSalesCount,
+        totalSalesQuantity: totalSalesQuantity,
+        totalSalesAmount: totalSalesAmount,
+        ecoSalesCount: ecoSalesCount,
+        ecoSalesQuantity: ecoSalesQuantity,
+        ecoSalesAmount: ecoSalesAmount,
+        ecoRatioByCount: ecoRatioByCount,
+        ecoRatioByQuantity: ecoRatioByQuantity,
+        ecoRatioByAmount: ecoRatioByAmount
+      };
 
-      // 고객 세그먼트 데이터 계산 (시트의 탄소 감축 점수 기반)
+      // 고객 세그먼트 데이터 계산 (weight_factor 기준)
       const customerStats = {};
       
       salesData.forEach(sale => {
@@ -819,9 +861,33 @@ const CarbonImpactDashboard = () => {
         customerStats[customerId].totalPurchases++;
         customerStats[customerId].totalAmount += sale.amount || 0;
         
-        // 시트의 총_탄소_감축_점수가 0보다 크면 친환경 제품으로 분류
-        const carbonReduction = sale.totalCarbonReduction || 0;
-        if (carbonReduction > 0) {
+        // weight_factor 기준으로 친환경 제품 여부 판단
+        const productNames = (sale.productName || '').split(',').map(p => p.trim()).filter(p => p);
+        let hasEcoProduct = false;
+        
+        for (const productName of productNames) {
+          // 정확한 매칭 시도
+          let weightFactor = productWeightMap[productName];
+          
+          // 정확한 매칭 실패시 유사한 제품명으로 매칭 시도
+          if (weightFactor === undefined) {
+            const matchedProduct = Object.keys(productWeightMap).find(key => 
+              key.includes(productName) || productName.includes(key) ||
+              (productName.length > 2 && key.includes(productName.substring(0, 3)))
+            );
+            if (matchedProduct) {
+              weightFactor = productWeightMap[matchedProduct];
+            }
+          }
+          
+          // weight_factor가 0.6 이하면 친환경 제품으로 판단
+          if (weightFactor !== undefined && weightFactor <= 0.6) {
+            hasEcoProduct = true;
+            break;
+          }
+        }
+        
+        if (hasEcoProduct) {
           customerStats[customerId].ecoFriendlyPurchases++;
         }
       });
@@ -866,7 +932,7 @@ const CarbonImpactDashboard = () => {
       console.log('탄소 감축 계산 완료:', {
         summary: summaryData,
         monthly: detailedData.length,
-        categories: categoryData.length,
+        ecoFriendlyData: ecoFriendlyData,
         segments: segmentData,
         years: years,
         finalEngagementDetails
@@ -875,7 +941,7 @@ const CarbonImpactDashboard = () => {
       return {
         summaryData,
         detailedData,
-        categoryData,
+        ecoFriendlyData,
         segmentData,
         years,
         engagementDetails: finalEngagementDetails
@@ -911,7 +977,7 @@ const CarbonImpactDashboard = () => {
       console.log('탄소_감축 시트 생성 완료');
 
       // 2. 데이터 구성
-      const { summaryData, detailedData, categoryData, segmentData } = calculatedData;
+      const { summaryData, detailedData, ecoFriendlyData, segmentData } = calculatedData;
       
       // 헤더와 데이터 준비
       const values = [];
@@ -928,16 +994,22 @@ const CarbonImpactDashboard = () => {
         values.push(['', '']);
       }
 
-      // 3. 월별 데이터, 카테고리별 데이터, 세그먼트 데이터를 별도로 추가
+      // 3. 월별 데이터, 친환경 제품 판매율 상세 데이터, 세그먼트 데이터를 별도로 추가
       const monthlyValues = [['년월', '감축량']];
       detailedData.forEach(item => {
         monthlyValues.push([item.month, item.carbonReduction]);
       });
 
-      const categoryValues = [['카테고리', '감축량']];
-      categoryData.forEach(item => {
-        categoryValues.push([item.category, item.totalCarbonReduction]);
-      });
+      const ecoFriendlyValues = [['구분', '값']];
+      ecoFriendlyValues.push(['총_판매_건수', ecoFriendlyData.totalSalesCount]);
+      ecoFriendlyValues.push(['총_판매_수량', ecoFriendlyData.totalSalesQuantity]);
+      ecoFriendlyValues.push(['총_매출액', ecoFriendlyData.totalSalesAmount]);
+      ecoFriendlyValues.push(['친환경_판매_건수', ecoFriendlyData.ecoSalesCount]);
+      ecoFriendlyValues.push(['친환경_판매_수량', ecoFriendlyData.ecoSalesQuantity]);
+      ecoFriendlyValues.push(['친환경_매출액', ecoFriendlyData.ecoSalesAmount]);
+      ecoFriendlyValues.push(['건수_기준_비율', ecoFriendlyData.ecoRatioByCount]);
+      ecoFriendlyValues.push(['수량_기준_비율', ecoFriendlyData.ecoRatioByQuantity]);
+      ecoFriendlyValues.push(['매출_기준_비율', ecoFriendlyData.ecoRatioByAmount]);
 
       const segmentValues = [['세그먼트', '고객수']];
       segmentValues.push(['champions', segmentData.champions]);
@@ -972,8 +1044,8 @@ const CarbonImpactDashboard = () => {
               values: monthlyValues
             },
             {
-              range: `'탄소_감축'!G1:H${categoryValues.length}`,
-              values: categoryValues
+              range: `'탄소_감축'!G1:H${ecoFriendlyValues.length}`,
+              values: ecoFriendlyValues
             },
             {
               range: `'탄소_감축'!J1:K${segmentValues.length}`,
@@ -1025,18 +1097,24 @@ const CarbonImpactDashboard = () => {
       }
       
       // 3. 기존 시트 데이터 업데이트
-      const { summaryData, detailedData, categoryData, segmentData } = calculatedData;
+      const { summaryData, detailedData, ecoFriendlyData, segmentData } = calculatedData;
       
-      // 월별 데이터, 카테고리별 데이터, 세그먼트 데이터 준비
+      // 월별 데이터, 친환경 제품 판매율 상세 데이터, 세그먼트 데이터 준비
       const monthlyValues = [['년월', '감축량']];
       detailedData.forEach(item => {
         monthlyValues.push([item.month, item.carbonReduction]);
       });
 
-      const categoryValues = [['카테고리', '감축량']];
-      categoryData.forEach(item => {
-        categoryValues.push([item.category, item.totalCarbonReduction]);
-      });
+      const ecoFriendlyValues = [['구분', '값']];
+      ecoFriendlyValues.push(['총_판매_건수', ecoFriendlyData.totalSalesCount]);
+      ecoFriendlyValues.push(['총_판매_수량', ecoFriendlyData.totalSalesQuantity]);
+      ecoFriendlyValues.push(['총_매출액', ecoFriendlyData.totalSalesAmount]);
+      ecoFriendlyValues.push(['친환경_판매_건수', ecoFriendlyData.ecoSalesCount]);
+      ecoFriendlyValues.push(['친환경_판매_수량', ecoFriendlyData.ecoSalesQuantity]);
+      ecoFriendlyValues.push(['친환경_매출액', ecoFriendlyData.ecoSalesAmount]);
+      ecoFriendlyValues.push(['건수_기준_비율', ecoFriendlyData.ecoRatioByCount]);
+      ecoFriendlyValues.push(['수량_기준_비율', ecoFriendlyData.ecoRatioByQuantity]);
+      ecoFriendlyValues.push(['매출_기준_비율', ecoFriendlyData.ecoRatioByAmount]);
 
       const segmentValues = [['세그먼트', '고객수']];
       segmentValues.push(['champions', segmentData.champions]);
@@ -1076,8 +1154,8 @@ const CarbonImpactDashboard = () => {
               values: monthlyValues.concat(Array(Math.max(0, 50 - monthlyValues.length)).fill(['', '']))
             },
             {
-              range: `'탄소_감축'!G1:H${Math.max(categoryValues.length, 20)}`,
-              values: categoryValues.concat(Array(Math.max(0, 20 - categoryValues.length)).fill(['', '']))
+              range: `'탄소_감축'!G1:H${Math.max(ecoFriendlyValues.length, 20)}`,
+              values: ecoFriendlyValues.concat(Array(Math.max(0, 20 - ecoFriendlyValues.length)).fill(['', '']))
             },
             {
               range: `'탄소_감축'!J1:K${Math.max(segmentValues.length, 10)}`,
@@ -1097,7 +1175,7 @@ const CarbonImpactDashboard = () => {
         lastUpdated: new Date().toISOString()
       });
       setDetailedCarbonData(calculatedData.detailedData);
-      setCategoryData({ categories: calculatedData.categoryData });
+      setCategoryData({ ecoFriendlyData: calculatedData.ecoFriendlyData });
       setCustomerSegmentData({ segments: calculatedData.segmentData });
       setEngagementDetails(calculatedData.engagementDetails);
       setAvailableYears(calculatedData.years);
@@ -1388,12 +1466,13 @@ const CarbonImpactDashboard = () => {
               <TrendsChart data={trendsData} />
             </div>
 
-            {/* 카테고리별 차트 */}
-            <div className="chart-container category-chart">
+            {/* 친환경 제품 판매율 상세 차트 */}
+            <div className="chart-container eco-friendly-chart">
               <div className="chart-header">
-                <h3>🏷️ 카테고리별 감축 기여도</h3>
+                <h3>🌱 친환경 제품 판매율 상세 분석</h3>
+                <p className="chart-subtitle">Weight Factor ≤ 0.6 기준</p>
               </div>
-              <CategoryChart data={categoryData} />
+              <EcoFriendlyChart data={categoryData} />
             </div>
 
             {/* 고객 세그먼트 차트 */}
@@ -1589,8 +1668,8 @@ const ExpandedCard = ({ data, cardType, onClose, detailedCarbonData, availableYe
                     <div className="criteria-icon">⚡</div>
                     <div className="criteria-content">
                       <h5>환경 영향도 (Weight Factor)</h5>
-                      <p>제품의 환경 부담이 <strong>0.8 미만</strong>인 제품만 친환경으로 분류합니다.</p>
-                      <div className="criteria-detail">일반 제품 대비 20% 이상 환경 부담 감소</div>
+                      <p>제품의 환경 부담이 <strong>0.6 이하</strong>인 제품만 친환경으로 분류합니다.</p>
+                      <div className="criteria-detail">일반 제품 대비 40% 이상 환경 부담 감소</div>
                     </div>
                   </div>
                   <div className="criteria-card">
@@ -2230,31 +2309,35 @@ const TrendsChart = ({ data }) => {
   );
 };
 
-// 카테고리별 파이 차트 컴포넌트
-const CategoryChart = ({ data }) => {
-  if (!data || !data.categories || data.categories.length === 0) {
+// 친환경 제품 판매율 상세 차트 컴포넌트
+const EcoFriendlyChart = ({ data }) => {
+  if (!data || !data.ecoFriendlyData) {
     return (
       <div className="chart-placeholder">
-        <p>🏷️ 카테고리 데이터가 없습니다</p>
-        <p className="placeholder-text">제품 판매 데이터가 누적되면 카테고리별 기여도를 확인할 수 있습니다</p>
+        <p>🌱 친환경 제품 판매율 데이터가 없습니다</p>
+        <p className="placeholder-text">제품 판매 데이터가 누적되면 weight_factor 기반 친환경 제품 판매율을 확인할 수 있습니다</p>
       </div>
     );
   }
 
-  const colors = [
-    '#4caf50', '#2d5a27', '#6b9b5f', '#4a7c3c', '#81c784',
-    '#66bb6a', '#4caf50', '#43a047', '#388e3c', '#2e7d32'
-  ];
-
+  const { ecoFriendlyData } = data;
+  
+  // 거래 빈도, 수량 가중치, 매출 가중치 데이터 구성
   const chartData = {
-    labels: data.categories.map(cat => cat.category),
+    labels: ['거래 빈도', '수량 가중치', '매출 가중치'],
     datasets: [
       {
-        data: data.categories.map(cat => Math.abs(cat.totalCarbonReduction)),
-        backgroundColor: colors.slice(0, data.categories.length),
-        borderColor: 'white',
+        label: '친환경 제품 비율 (%)',
+        data: [
+          ecoFriendlyData.ecoRatioByCount,
+          ecoFriendlyData.ecoRatioByQuantity,
+          ecoFriendlyData.ecoRatioByAmount
+        ],
+        backgroundColor: ['#4caf50', '#66bb6a', '#81c784'],
+        borderColor: ['#2e7d32', '#4caf50', '#66bb6a'],
         borderWidth: 2,
-        hoverBorderWidth: 3,
+        borderRadius: 6,
+        borderSkipped: false,
       }
     ]
   };
@@ -2264,13 +2347,7 @@ const CategoryChart = ({ data }) => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'right',
-        labels: {
-          color: 'var(--carbon-text)',
-          font: { size: 12 },
-          padding: 15,
-          usePointStyle: true,
-        }
+        display: false
       },
       tooltip: {
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -2278,11 +2355,41 @@ const CategoryChart = ({ data }) => {
         bodyColor: 'white',
         callbacks: {
           label: function(context) {
-            const value = context.parsed;
-            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-            const percentage = ((value / total) * 100).toFixed(1);
-            return `${context.label}: ${value.toFixed(1)} kg CO₂ (${percentage}%)`;
+            return `친환경 제품 비율: ${context.parsed.y.toFixed(1)}%`;
+          },
+          afterLabel: function(context) {
+            const index = context.dataIndex;
+            if (index === 0) {
+              return `친환경 거래: ${ecoFriendlyData.ecoSalesCount}건 / 총 거래: ${ecoFriendlyData.totalSalesCount}건`;
+            } else if (index === 1) {
+              return `친환경 수량: ${ecoFriendlyData.ecoSalesQuantity}개 / 총 수량: ${ecoFriendlyData.totalSalesQuantity}개`;
+            } else {
+              return `친환경 매출: ${ecoFriendlyData.ecoSalesAmount.toLocaleString()}원 / 총 매출: ${ecoFriendlyData.totalSalesAmount.toLocaleString()}원`;
+            }
           }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)',
+        },
+        ticks: {
+          color: 'var(--carbon-text-light)',
+          callback: function(value) {
+            return value + '%';
+          }
+        }
+      },
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          color: 'var(--carbon-text-light)',
         }
       }
     }
@@ -2290,7 +2397,7 @@ const CategoryChart = ({ data }) => {
 
   return (
     <div className="chart-content" style={{ height: '300px' }}>
-      <Pie data={chartData} options={options} />
+      <Bar data={chartData} options={options} />
     </div>
   );
 };
