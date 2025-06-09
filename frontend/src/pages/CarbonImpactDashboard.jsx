@@ -1558,6 +1558,7 @@ const CarbonImpactDashboard = () => {
                 selectedYear={selectedYear}
                 onYearChange={handleYearChange}
                 engagementDetails={engagementDetails}
+                categoryData={categoryData}
               />
             </div>
           )}
@@ -1653,7 +1654,7 @@ const CarbonImpactDashboard = () => {
 };
 
 // 확장된 카드 컴포넌트
-const ExpandedCard = ({ data, cardType, onClose, detailedCarbonData, availableYears, selectedYear, onYearChange, engagementDetails }) => {
+const ExpandedCard = ({ data, cardType, onClose, detailedCarbonData, availableYears, selectedYear, onYearChange, engagementDetails, categoryData }) => {
   if (!data) return null;
 
   const getCardInfo = (type) => {
@@ -1793,6 +1794,64 @@ const ExpandedCard = ({ data, cardType, onClose, detailedCarbonData, availableYe
 
           {cardType === 'eco' && (
             <div className="eco-calculation-breakdown">
+              <div className="monthly-eco-breakdown">
+                <div className="breakdown-header">
+                  <h4>📅 월별 친환경 제품 판매율</h4>
+                  {availableYears && availableYears.length > 0 && (
+                    <div className="year-selector">
+                      {availableYears.map(year => (
+                        <button
+                          key={year}
+                          className={`year-btn ${selectedYear === year ? 'active' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onYearChange(year);
+                          }}
+                        >
+                          {year}년
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                {(() => {
+                  // categoryData에서 ecoFriendlyMonthlyData를 가져와서 선택된 년도로 필터링
+                  const ecoMonthlyData = categoryData?.ecoFriendlyMonthlyData || [];
+                  const filteredEcoData = ecoMonthlyData.filter(item => item.year === selectedYear);
+                  
+                  return (
+                    <>
+                                             <div className="monthly-grid">
+                         {filteredEcoData.map((item, index) => (
+                           <div key={index} className="monthly-item">
+                             <div className="month-label">{formatMonth(item.month)}</div>
+                             <div className="month-value">
+                               {item.ecoRatioByCount.toFixed(1)}%
+                             </div>
+                           </div>
+                         ))}
+                       </div>
+                      
+                                             <div className="summary-info">
+                         <div className="info-item">
+                           <span className="info-label">총 기간:</span>
+                           <span className="info-value">{filteredEcoData.length}개월</span>
+                         </div>
+                         <div className="info-item">
+                           <span className="info-label">월평균:</span>
+                           <span className="info-value">
+                             {filteredEcoData.length > 0 ? 
+                               (filteredEcoData.reduce((sum, item) => sum + item.ecoRatioByCount, 0) / filteredEcoData.length).toFixed(1) 
+                               : 0}%
+                           </span>
+                         </div>
+                       </div>
+                    </>
+                  );
+                })()}
+              </div>
+
               <div className="calculation-method">
                 <h4>🎯 친환경 제품 판단 기준</h4>
                 <div className="criteria-grid">
@@ -1810,14 +1869,6 @@ const ExpandedCard = ({ data, cardType, onClose, detailedCarbonData, availableYe
                       <h5>탄소 감축 효과</h5>
                       <p>실제로 <strong>탄소 배출을 줄이는 효과</strong>가 입증된 제품만 포함합니다.</p>
                       <div className="criteria-detail">측정 가능한 CO₂ 감축량 보유</div>
-                    </div>
-                  </div>
-                  <div className="criteria-card">
-                    <div className="criteria-icon">🔍</div>
-                    <div className="criteria-content">
-                      <h5>3단계 제품 매칭</h5>
-                      <p><strong>정확한 이름 → 키워드 → 카테고리</strong> 순으로 매칭하여 정확도를 높입니다.</p>
-                      <div className="criteria-detail">현재 매칭 정확도: 85.2%</div>
                     </div>
                   </div>
                 </div>
@@ -1874,39 +1925,7 @@ const ExpandedCard = ({ data, cardType, onClose, detailedCarbonData, availableYe
                 </div>
               </div>
 
-              <div className="current-results">
-                <h4>📊 {selectedYear}년 분석 결과</h4>
-                <div className="results-dashboard">
-                  <div className="main-result">
-                    <div className="main-result-value">{parseFloat(data.ecoProductRatio || 0).toFixed(1)}%</div>
-                    <div className="main-result-label">종합 친환경 제품 판매율</div>
-                  </div>
-                  
-                  <div className="detailed-metrics">
-                    <div className="metric-card">
-                      <div className="metric-icon">🎯</div>
-                      <div className="metric-content">
-                        <div className="metric-value">85.2%</div>
-                        <div className="metric-label">제품 매칭 정확도</div>
-                      </div>
-                    </div>
-                    <div className="metric-card">
-                      <div className="metric-icon">📦</div>
-                      <div className="metric-content">
-                        <div className="metric-value">{Math.round(parseFloat(data.ecoProductRatio || 0) * 127).toLocaleString()}</div>
-                        <div className="metric-label">친환경 제품 거래</div>
-                      </div>
-                    </div>
-                    <div className="metric-card">
-                      <div className="metric-icon">🌿</div>
-                      <div className="metric-content">
-                        <div className="metric-value">{Math.round(parseFloat(data.ecoProductRatio || 0) * 1.2).toLocaleString()}개</div>
-                        <div className="metric-label">친환경 제품 종류</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+
 
               <div className="data-transparency">
                 <h4>🔍 데이터 투명성 및 품질</h4>

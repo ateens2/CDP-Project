@@ -1320,6 +1320,15 @@
   margin-top: 20px;
 }
 
+/* 월별 친환경 제품 판매율 상세 정보 */
+.monthly-eco-breakdown {
+  background: var(--carbon-light);
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+  margin-bottom: 30px;
+}
+
 /* 월별 분석 헤더 */
 .breakdown-header {
   display: flex;
