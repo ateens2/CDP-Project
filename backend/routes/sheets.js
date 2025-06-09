@@ -332,10 +332,66 @@ function parseNewMappingOutput(output) {
 
 // 제품 판매 기록 시트 데이터 생성
 function createSalesSheetData(originalHeaders, originalRows, salesMapping) {
-  // 제품 판매 기록 시트 헤더 정의 - 고객ID 추가
+  // 탄소 배출량 데이터 로드
+  const carbonDataPath = path.join(__dirname, '../../data/생활용품 탄소배출량.csv');
+  const categoryDataPath = path.join(__dirname, '../../data/카테고리 별 기준 제품.csv');
+  
+  let productCarbonMap = {};
+  let categoryBaseMap = {};
+  
+  try {
+    if (fs.existsSync(carbonDataPath) && fs.existsSync(categoryDataPath)) {
+      // CSV 파일 읽기
+      const carbonData = fs.readFileSync(carbonDataPath, 'utf8');
+      const categoryData = fs.readFileSync(categoryDataPath, 'utf8');
+      
+      // 제품별 탄소 배출량 맵 생성
+      const carbonLines = carbonData.split('\n').slice(1); // 헤더 제외
+      carbonLines.forEach(line => {
+        if (line.trim()) {
+          const [industry, code, productName, emissionFactor, weightFactor, totalEmission, category, isBaseProduct] = line.split(',');
+          if (productName && emissionFactor && weightFactor) {
+            productCarbonMap[productName.trim()] = {
+              emissionFactor: parseFloat(emissionFactor.trim()),
+              weightFactor: parseFloat(weightFactor.trim()),
+              totalEmission: parseFloat(totalEmission.trim()),
+              category: category.trim()
+            };
+          }
+        }
+      });
+      
+      // 카테고리별 기준 제품 탄소 배출량 맵 생성
+      const categoryLines = categoryData.split('\n').slice(1); // 헤더 제외
+      categoryLines.forEach(line => {
+        if (line.trim()) {
+          const [category, baseProductName, productCode, baseEmission] = line.split(',');
+          if (category && baseEmission) {
+            const categoryName = category.trim();
+            const baseName = baseProductName.trim();
+            // 기준 제품의 상세 정보 찾기
+            if (productCarbonMap[baseName]) {
+              categoryBaseMap[categoryName] = {
+                emissionFactor: productCarbonMap[baseName].emissionFactor,
+                weightFactor: productCarbonMap[baseName].weightFactor,
+                totalEmission: productCarbonMap[baseName].totalEmission
+              };
+            }
+          }
+        }
+      });
+      
+      console.log(`탄소 배출량 데이터 ${Object.keys(productCarbonMap).length}개 제품 로드 완료`);
+      console.log(`카테고리 기준 배출량 ${Object.keys(categoryBaseMap).length}개 카테고리 로드 완료`);
+    }
+  } catch (error) {
+    console.error('탄소 배출량 데이터 로드 중 오류:', error);
+  }
+
+  // 제품 판매 기록 시트 헤더 정의 - 탄소 감축 점수 컬럼 추가
   const salesHeaders = [
     '주문_번호', '고객ID', '주문자명', '주문_일자', '거래_완료_일자', 
-    '상품명', '단가', '수량', '총_주문_금액', '주문_상태'
+    '상품명', '단가', '수량', '총_주문_금액', '주문_상태', '제품별_탄소_감축_점수', '총_탄소_감축_점수'
   ];
   
   console.log('Original headers:', originalHeaders);
@@ -375,6 +431,98 @@ function createSalesSheetData(originalHeaders, originalRows, salesMapping) {
   // 데이터 변환
   const salesData = [salesHeaders];
   
+  // 탄소 감축 점수 계산 함수
+  function calculateCarbonReductionForOrder(productNames, quantities) {
+    const productList = productNames ? productNames.split(',').map(p => p.trim()).filter(p => p) : [];
+    const quantityList = quantities ? quantities.split(',').map(q => parseInt(q.trim()) || 1) : [];
+    
+    // 수량 리스트 길이를 제품 리스트에 맞춤
+    while (quantityList.length < productList.length) {
+      quantityList.push(1);
+    }
+    
+    const productCarbonReductions = [];
+    let totalCarbonReduction = 0;
+    
+    for (let i = 0; i < productList.length; i++) {
+      const productName = productList[i];
+      const quantity = quantityList[i];
+      
+      if (!productName) {
+        productCarbonReductions.push('0');
+        continue;
+      }
+      
+      // 제품의 탄소 배출량 정보 찾기
+      let productInfo = productCarbonMap[productName];
+      
+      if (!productInfo) {
+        // 유사한 제품명 찾기
+        let bestMatch = null;
+        let bestMatchScore = 0;
+        
+        for (const [mapProductName, info] of Object.entries(productCarbonMap)) {
+          const cleanProductName = productName.replace(/\s/g, '').toLowerCase();
+          const cleanMapProductName = mapProductName.replace(/\s/g, '').toLowerCase();
+          
+          let matchScore = 0;
+          if (cleanProductName.includes(cleanMapProductName)) {
+            matchScore = cleanMapProductName.length;
+          } else if (cleanMapProductName.includes(cleanProductName)) {
+            matchScore = cleanProductName.length;
+          }
+          
+          if (matchScore === 0) {
+            const productWords = cleanProductName.split(/[^가-힣a-z0-9]/);
+            const mapWords = cleanMapProductName.split(/[^가-힣a-z0-9]/);
+            
+            for (const word of productWords) {
+              if (word.length >= 2 && mapWords.some(mw => mw.includes(word) || word.includes(mw))) {
+                matchScore = word.length;
+                break;
+              }
+            }
+          }
+          
+          if (matchScore > bestMatchScore) {
+            bestMatch = info;
+            bestMatchScore = matchScore;
+          }
+        }
+        
+        if (bestMatch) {
+          productInfo = bestMatch;
+        } else {
+          productCarbonReductions.push('0');
+          continue;
+        }
+      }
+      
+      // 카테고리의 기준 제품 정보 찾기
+      const baseInfo = categoryBaseMap[productInfo.category];
+      if (!baseInfo) {
+        productCarbonReductions.push('0');
+        continue;
+      }
+      
+      // 탄소 감축 점수 계산: (기준 제품의 emission_factor × weight_factor - 판매 제품의 emission_factor × weight_factor) × 수량
+      const baseEmission = baseInfo.emissionFactor * baseInfo.weightFactor;
+      const productEmission = productInfo.emissionFactor * productInfo.weightFactor;
+      const carbonReduction = (baseEmission - productEmission) * quantity;
+      
+      // 소수점 둘째 자리까지 반올림
+      const roundedReduction = Math.round(carbonReduction * 100) / 100;
+      
+      productCarbonReductions.push(roundedReduction.toString());
+      totalCarbonReduction += roundedReduction;
+    }
+    
+    return {
+      productReductions: productCarbonReductions.join(','),
+      totalReduction: Math.round(totalCarbonReduction * 100) / 100
+    };
+  }
+
   originalRows.forEach((row, rowIndex) => {
     const newRow = salesHeaders.map(targetField => {
       const index = mappingIndices[targetField];
@@ -409,6 +557,26 @@ function createSalesSheetData(originalHeaders, originalRows, salesMapping) {
     if (!mappingIndices['주문_상태']) {
       const statusIndex = salesHeaders.indexOf('주문_상태');
       newRow[statusIndex] = '거래 완료';
+    }
+    
+    // 탄소 감축 점수 계산 및 추가
+    const productNamesIndex = salesHeaders.indexOf('상품명');
+    const quantitiesIndex = salesHeaders.indexOf('수량');
+    const productCarbonIndex = salesHeaders.indexOf('제품별_탄소_감축_점수');
+    const totalCarbonIndex = salesHeaders.indexOf('총_탄소_감축_점수');
+    
+    if (productNamesIndex !== -1 && quantitiesIndex !== -1 && productCarbonIndex !== -1 && totalCarbonIndex !== -1) {
+      const productNames = newRow[productNamesIndex];
+      const quantities = newRow[quantitiesIndex];
+      
+      const carbonResult = calculateCarbonReductionForOrder(productNames, quantities);
+      newRow[productCarbonIndex] = carbonResult.productReductions;
+      newRow[totalCarbonIndex] = carbonResult.totalReduction.toString();
+      
+      // 디버깅: 첫 5개 행의 탄소 감축 점수 확인
+      if (rowIndex < 5) {
+        console.log(`Row ${rowIndex + 1}: 상품명="${productNames}", 수량="${quantities}", 제품별_탄소_감축="${carbonResult.productReductions}", 총_탄소_감축="${carbonResult.totalReduction}"`);
+      }
     }
     
     salesData.push(newRow);
@@ -692,7 +860,7 @@ async function calculateCustomerPurchaseStats(sheets, spreadsheetId, salesSheetN
     // 제품 판매 기록 시트 데이터 가져오기
     const salesResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${salesSheetName}'!A:J`, // A부터 J열까지 (고객ID 추가로 인해 I에서 J로 변경)
+      range: `'${salesSheetName}'!A:L`, // A부터 L열까지 (탄소 감축 점수 컬럼 추가로 J에서 L로 변경)
     });
     
     const salesData = salesResponse.data.values || [];
@@ -940,11 +1108,11 @@ async function calculateCarbonReductionStats(sheets, spreadsheetId, salesSheetNa
     
     console.log(`카테고리 기준 배출량 ${Object.keys(categoryBaseMap).length}개 카테고리 로드 완료`);
     
-    // 판매 데이터 가져오기
-    const salesResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${salesSheetName}'!A:J`, // A부터 J열까지 (고객ID 추가로 인해 I에서 J로 변경)
-    });
+              // 판매 데이터 가져오기
+          const salesResponse = await sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: `'${salesSheetName}'!A:L`, // A부터 L열까지 (탄소 감축 점수 컬럼 추가로 J에서 L로 변경)
+          });
     
     const salesRows = salesResponse.data.values || [];
     if (salesRows.length < 2) {

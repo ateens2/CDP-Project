@@ -9,7 +9,7 @@
 
 **계산 공식:**
 ```
-각 판매 건별 탄소 감축량 = (판매 제품과 동일한 카테고리 기준 제품의 emmision_factor x weight_factor - 판매 제품의 wmission_factor x weight_factor) x quantity
+각 판매 건별 탄소 감축량 = (판매 제품과 동일한 카테고리 기준 제품의 emmision_factor x weight_factor - 판매 제품의 emission_factor x weight_factor) x quantity
 총 탄소 감축량 = Σ(각 판매 건별 탄소 감축량)
 ```
 

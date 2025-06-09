@@ -163,6 +163,8 @@ const FieldMappingTool = ({ sheet, onMapComplete }) => {
           <ul>
             <li><strong>거래 완료 일자:</strong> 매핑되지 않은 경우 주문 일자 + 3일로 자동 계산</li>
             <li><strong>주문 상태:</strong> 매핑되지 않은 경우 '거래 완료'로 기본값 설정</li>
+            <li><strong>제품별 탄소 감축 점수:</strong> 각 제품에 대해 (기준 제품 배출량 - 판매 제품 배출량) × 수량으로 자동 계산됨</li>
+            <li><strong>총 탄소 감축 점수:</strong> 해당 주문의 모든 제품별 탄소 감축 점수의 합계로 자동 계산됨</li>
             <li><strong>고객 정보:</strong> 중복된 고객은 자동으로 제거됨</li>
             <li><strong>총 구매 금액:</strong> 제품 판매 기록을 기반으로 고객별로 자동 계산됨</li>
             <li><strong>총 구매 횟수:</strong> 제품 판매 기록을 기반으로 고객별로 자동 계산됨</li>
