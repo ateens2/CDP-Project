@@ -221,3 +221,4 @@ function normalizeProductName(name) {
     .replace(/[0-9]+ml|[0-9]+g|[0-9]+개/g, ""); // 용량/수량 표기 제거
 }
 ```
+test for changed directory
