@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { UserContext } from '../contexts/UserContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import './AuditLogPage.css';
 
@@ -13,21 +13,29 @@ function AuditLogPage() {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const { user } = useContext(UserContext);
+  const { user, sheets } = useContext(UserContext);
   const navigate = useNavigate();
+  const { state } = useLocation();
 
-  // 현재 사용자가 작업 중인(또는 마지막으로 선택한) 스프레드시트 ID를 가져오는 로직.
-  // 실제 구현에서는 UserContext, localStorage, URL params 등에서 가져와야 합니다.
-  // 여기서는 user 객체에 selectedSheetId가 있다고 가정합니다.
-  const spreadsheetId = user?.selectedSheetId || localStorage.getItem('selectedSpreadsheetId'); 
+  // 스프레드시트 ID 가져오기 - state에서 우선 확인, 없으면 첫 번째 시트 사용
+  const sheet = state?.sheet || (sheets && sheets.length > 0 ? sheets[0] : null);
+  const spreadsheetId = sheet?.sheetId || user?.selectedSheetId || localStorage.getItem('selectedSpreadsheetId'); 
 
   useEffect(() => {
+    console.log('AuditLogPage useEffect - 디버깅 정보:', {
+      user: !!user,
+      userRole: user?.role,
+      sheets: sheets?.length,
+      sheet: !!sheet,
+      spreadsheetId: spreadsheetId
+    });
+
     if (!user || user.role !== 'admin') {
       navigate('/');
       return;
     }
     if (!spreadsheetId) {
-        setError('No spreadsheet selected to view audit log.');
+        setError('스프레드시트가 선택되지 않았습니다. 먼저 고객 관리 페이지에서 시트를 선택해주세요.');
         setLoading(false);
         setAuditLog([]);
         return;
@@ -46,7 +54,11 @@ function AuditLogPage() {
           apiUrl += `?${queryParams.join('&')}`;
         }
         
+        console.log('감사 로그 API 호출:', apiUrl);
+        
         const response = await axios.get(apiUrl, { withCredentials: true });
+        
+        console.log('감사 로그 응답:', response.data);
         
         // 데이터 형식 변환
         const formattedLog = (response.data.auditLog || []).map(entry => ({
@@ -71,7 +83,7 @@ function AuditLogPage() {
     };
 
     fetchAuditLog();
-  }, [user, navigate, spreadsheetId, filterUserEmail, filterUniqueID]);
+  }, [user, navigate, spreadsheetId, filterUserEmail, filterUniqueID, sheets]);
 
   const handleFilterUserEmailChange = (event) => {
     setFilterUserEmail(event.target.value);
@@ -96,7 +108,7 @@ function AuditLogPage() {
   if (!spreadsheetId && !loading) {
     return (
       <div className="audit-log-page">
-        <Header />
+        <Header sheet={sheet} />
         <div className="audit-container">
           <div className="error-card">
             <div className="error-icon">⚠️</div>
@@ -110,7 +122,7 @@ function AuditLogPage() {
 
   return (
     <div className="audit-log-page">
-      <Header />
+      <Header sheet={sheet} />
       <div className="audit-container">
         <div className="audit-header">
           <h1 className="audit-title">

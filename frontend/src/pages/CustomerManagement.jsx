@@ -288,6 +288,71 @@ const CustomerManagement = () => {
     setSelectedCustomer((prev) => ({ ...prev, [key]: val }));
   };
 
+  // ChangeHistory 시트에 변경 이력 저장
+  const saveChangeHistory = async (changes) => {
+    if (!changes || changes.length === 0) return;
+
+    try {
+      // ChangeHistory 시트 확인/생성
+      const meta = await window.gapi.client.sheets.spreadsheets.get({
+        spreadsheetId: sheet.sheetId,
+      });
+
+      const sheets = meta.result.sheets;
+      let changeHistorySheet = sheets.find(s => s.properties.title === 'ChangeHistory');
+
+      if (!changeHistorySheet) {
+        // ChangeHistory 시트가 없으면 생성
+        await window.gapi.client.sheets.spreadsheets.batchUpdate({
+          spreadsheetId: sheet.sheetId,
+          resource: {
+            requests: [{
+              addSheet: {
+                properties: {
+                  title: 'ChangeHistory'
+                }
+              }
+            }]
+          }
+        });
+
+        // 헤더 추가
+        await window.gapi.client.sheets.spreadsheets.values.update({
+          spreadsheetId: sheet.sheetId,
+          range: 'ChangeHistory!A1:F1',
+          valueInputOption: 'RAW',
+          resource: {
+            values: [['Timestamp', 'UserEmail', 'UniqueID', 'FieldName', 'OldValue', 'NewValue']]
+          }
+        });
+      }
+
+      // 변경 이력 데이터 추가
+      const historyValues = changes.map(change => [
+        new Date().toISOString(),
+        user.email,
+        change.uniqueId,
+        change.fieldName,
+        change.oldValue || '',
+        change.newValue || ''
+      ]);
+
+      await window.gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId: sheet.sheetId,
+        range: 'ChangeHistory!A:F',
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        resource: {
+          values: historyValues
+        }
+      });
+
+      console.log('변경 이력이 ChangeHistory 시트에 저장되었습니다.');
+    } catch (error) {
+      console.error('ChangeHistory 저장 중 오류:', error);
+    }
+  };
+
   // 저장 (추가 or 수정)
   const handleSaveChanges = async () => {
     if (!sheet || !window.gapi?.client) {
@@ -316,8 +381,46 @@ const CustomerManagement = () => {
         setIsEditPanelOpen(false);
         return;
       } else {
-        // 기존 고객 수정
+        // 기존 고객 수정 - 변경 이력 추적
         const rowNum = selectedCustomer.__rowNum__;
+        const originalCustomer = customers.find(c => c.__rowNum__ === rowNum);
+        
+        // 변경된 필드들 찾기
+        const changes = [];
+        const uniqueId = selectedCustomer["고객ID"] || `row-${rowNum}`;
+        
+        // 필드 매핑 (한글 필드명을 영문으로 매핑)
+        const fieldNameMap = {
+          '고객ID': 'customer_id',
+          '고객명': 'name',
+          '연락처': 'phone',
+          '이메일': 'email',
+          '생년월일': 'birth_date',
+          '가입일': 'join_date',
+          '마지막_구매일': 'last_purchase_date',
+          '총_구매_금액': 'total_purchase_amount',
+          '총_구매_횟수': 'total_purchase_count',
+          '탄소_감축_등급': 'carbon_reduction_grade',
+          '탄소_감축_점수': 'carbon_reduction_score'
+        };
+
+        if (originalCustomer) {
+          for (const field of sheetHeaders) {
+            const oldValue = originalCustomer[field] || '';
+            const newValue = selectedCustomer[field] || '';
+            
+            if (oldValue !== newValue) {
+              changes.push({
+                uniqueId: uniqueId,
+                fieldName: fieldNameMap[field] || field, // 매핑된 영문 필드명 사용
+                oldValue: oldValue,
+                newValue: newValue
+              });
+            }
+          }
+        }
+
+        // 스프레드시트 업데이트
         const rowValues = sheetHeaders.map((h) => selectedCustomer[h] ?? "");
         const lastColLetter = String.fromCharCode(65 + sheetHeaders.length - 1);
         const range = `'${sheetName}'!A${rowNum}:${lastColLetter}${rowNum}`;
@@ -328,6 +431,12 @@ const CustomerManagement = () => {
           valueInputOption: "RAW",
           resource: { values: [rowValues] },
         });
+
+        // 변경 이력이 있으면 ChangeHistory 시트에 저장
+        if (changes.length > 0) {
+          await saveChangeHistory(changes);
+          console.log(`${changes.length}개의 필드 변경이 ChangeHistory에 기록되었습니다.`);
+        }
 
         // 로컬 state도 업데이트
         setCustomers((prev) =>
