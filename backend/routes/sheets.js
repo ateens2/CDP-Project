@@ -5,17 +5,8 @@ const { google } = require('googleapis');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const mysql = require('mysql2/promise');
 
-// MySQL 연결 설정
-const mysqlConfig = {
-  host: process.env.MYSQL_HOST,
-  port: process.env.MYSQL_PORT || 3306,
-  user: process.env.MYSQL_USER,
-  password: process.env.MYSQL_PASSWORD,
-  database: process.env.MYSQL_DATABASE,
-  namedPlaceholders: true,
-};
+// MySQL 연결 설정 제거 - ChangeHistory 시트만 사용
 
 // 스프레드시트의 열 정보 가져오기
 router.get('/headers', async (req, res) => {
@@ -795,32 +786,8 @@ router.post('/record-change', async (req, res) => {
       console.log('변경 이력 기록 완료');
       res.status(200).json({ message: 'Change history recorded successfully via Google API.' });
     } else {
-      console.log('Google API 접근 불가, MySQL에 변경 이력 기록');
-      
-      // MySQL에 변경 이력 기록 (백업 방법)
-      const connection = await mysql.createConnection(mysqlConfig);
-      
-      for (const change of changes) {
-        await connection.execute(
-          `INSERT INTO customer_change_history 
-           (spreadsheet_id, sheet_name, customer_unique_id, changed_by, field_name, old_value, new_value, changed_at) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            spreadsheetId,
-            sheetName || 'Main',
-            UniqueID,
-            changedBy,
-            change.fieldName,
-            String(change.oldValue),
-            String(change.newValue),
-            new Date()
-          ]
-        );
-      }
-      
-      await connection.end();
-      console.log('MySQL에 변경 이력 기록 완료');
-      res.status(200).json({ message: 'Change history recorded successfully in MySQL.' });
+      // Google API 접근 불가 시 에러 반환 (MySQL 제거)
+      throw new Error('Google API 접근이 불가능합니다. 변경 이력을 기록할 수 없습니다.');
     }
 
   } catch (error) {

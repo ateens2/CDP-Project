@@ -148,7 +148,12 @@ export default function Header({ hideTitle, sheet }) {
                     <button
                       onClick={() => {
                         setOpenMenu(false);
-                        navigate("/audit-log");
+                        console.log("Header에서 감사 로그로 이동 - 전달할 시트:", sheet);
+                        if (sheet) {
+                          navigate("/audit-log", { state: { sheet } });
+                        } else {
+                          navigate("/audit-log");
+                        }
                       }}
                     >
                       <i className="fa fa-history"></i>
@@ -173,7 +178,7 @@ export default function Header({ hideTitle, sheet }) {
 
       {/* ── 사이드바: 항상 렌더링하되, 클래스만 토글하여 애니메이션 처리 ── */}
       <div id="sidebar-container" className={showCategory ? "open" : ""}>
-        <Category sheet={(user, sheet)} />
+        <Category sheet={sheet} />
       </div>
     </>
   );

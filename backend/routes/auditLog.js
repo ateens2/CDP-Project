@@ -1,10 +1,8 @@
 const express = require('express');
 const router = express.Router();
-// MySQL 관련 모듈 제거
-const { google } = require('googleapis'); // googleapis 추가
+const { google } = require('googleapis');
 require('dotenv').config();
 const { isAdmin } = require('../middleware/authMiddleware');
-// pool 모듈 import 제거
 
 const CHANGE_HISTORY_SHEET_NAME = 'ChangeHistory'; // 시트 이름을 상수로 정의
 const CHANGE_HISTORY_HEADERS = ['Timestamp', 'UserEmail', 'UniqueID', 'FieldName', 'OldValue', 'NewValue'];
@@ -70,17 +68,23 @@ router.get('/sheet/:spreadsheetId', isAdmin, async (req, res) => {
     await ensureChangeHistorySheetExists(sheets, spreadsheetId);
 
     // ChangeHistory 시트 전체 데이터 가져오기 (작은따옴표로 시트명 감싸기)
+    console.log(`ChangeHistory 시트에서 데이터 가져오기 시작. 스프레드시트 ID: ${spreadsheetId}`);
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `'${CHANGE_HISTORY_SHEET_NAME}'!A:F`, // 작은따옴표로 시트명 감싸기
     });
 
+    console.log('ChangeHistory 시트 원본 데이터:', response.data.values);
+
     const rows = response.data.values;
     if (!rows || rows.length < 2) { // 헤더만 있거나 데이터가 없는 경우
+      console.log('ChangeHistory 시트에 데이터가 없음');
       return res.json({ auditLog: [] });
     }
 
     const headers = rows[0];
+    console.log('ChangeHistory 시트 헤더:', headers);
+    
     let auditLogData = rows.slice(1).map(row => {
       let entry = {};
       headers.forEach((header, index) => {
@@ -88,6 +92,9 @@ router.get('/sheet/:spreadsheetId', isAdmin, async (req, res) => {
       });
       return entry;
     });
+
+    console.log(`ChangeHistory 시트에서 ${auditLogData.length}개 레코드 파싱 완료`);
+    console.log('파싱된 첫 번째 레코드:', auditLogData[0]);
 
     // 필터링 적용
     if (userEmail) {
@@ -101,6 +108,9 @@ router.get('/sheet/:spreadsheetId', isAdmin, async (req, res) => {
     // 최신순 정렬 (Timestamp 기준)
     auditLogData.sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp));
 
+    console.log(`최종적으로 ${auditLogData.length}개 레코드 반환`);
+    console.log('반환할 첫 번째 레코드:', auditLogData[0]);
+
     res.json({ auditLog: auditLogData });
 
   } catch (error) {
@@ -113,9 +123,5 @@ router.get('/sheet/:spreadsheetId', isAdmin, async (req, res) => {
     res.status(statusCode || 500).json({ message: 'Failed to fetch audit log from sheet.', error: apiError });
   }
 });
-
-/* // 기존 MySQL 기반 라우트 주석 처리 - 사용하지 않음
-// 이 부분 전체를 주석 처리하거나 제거해도 됩니다.
-*/
 
 module.exports = router; 

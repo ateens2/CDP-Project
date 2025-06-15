@@ -114,7 +114,15 @@ const Category = ({ sheet }) => {
             className={`sidebar-item ${
               pathname === "/audit-log" ? "active" : ""
             }`}
-            onClick={() => navigate("/audit-log")}
+            onClick={() => {
+              const sheetToPass = sheet || (sheets && sheets.length > 0 ? sheets[0] : null);
+              console.log("감사 로그로 이동 - 전달할 시트:", sheetToPass);
+              if (sheetToPass) {
+                navigate("/audit-log", { state: { sheet: sheetToPass } });
+              } else {
+                navigate("/audit-log");
+              }
+            }}
           >
             <i className="fa fa-history"></i>
             감사 로그

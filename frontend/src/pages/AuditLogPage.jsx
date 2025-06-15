@@ -17,19 +17,19 @@ function AuditLogPage() {
   const navigate = useNavigate();
   const { state } = useLocation();
 
-  // 스프레드시트 ID 가져오기 - state에서 우선 확인, 없으면 첫 번째 시트 사용
+    // 스프레드시트 ID 가져오기 - state에서 우선 확인, 없으면 첫 번째 시트 사용
   const sheet = state?.sheet || (sheets && sheets.length > 0 ? sheets[0] : null);
-  const spreadsheetId = sheet?.sheetId || user?.selectedSheetId || localStorage.getItem('selectedSpreadsheetId'); 
+  const spreadsheetId = sheet?.sheetId;
+  
+  console.log('🔄 AuditLogPage 시트 정보:', {
+    state시트: state?.sheet?.sheetId,
+    sheets첫번째: sheets?.[0]?.sheetId,
+    최종선택된시트: spreadsheetId,
+    시트이름: sheet?.sheetName,
+    시간: new Date().toLocaleTimeString()
+  });
 
   useEffect(() => {
-    console.log('AuditLogPage useEffect - 디버깅 정보:', {
-      user: !!user,
-      userRole: user?.role,
-      sheets: sheets?.length,
-      sheet: !!sheet,
-      spreadsheetId: spreadsheetId
-    });
-
     if (!user || user.role !== 'admin') {
       navigate('/');
       return;
@@ -40,7 +40,6 @@ function AuditLogPage() {
         setAuditLog([]);
         return;
     }
-
     const fetchAuditLog = async () => {
       setLoading(true);
       setError(null);
@@ -54,11 +53,11 @@ function AuditLogPage() {
           apiUrl += `?${queryParams.join('&')}`;
         }
         
-        console.log('감사 로그 API 호출:', apiUrl);
+        console.log('📡 감사 로그 API 호출:', apiUrl);
         
         const response = await axios.get(apiUrl, { withCredentials: true });
         
-        console.log('감사 로그 응답:', response.data);
+        console.log('📥 감사 로그 응답 받음:', response.data);
         
         // 데이터 형식 변환
         const formattedLog = (response.data.auditLog || []).map(entry => ({
@@ -83,7 +82,7 @@ function AuditLogPage() {
     };
 
     fetchAuditLog();
-  }, [user, navigate, spreadsheetId, filterUserEmail, filterUniqueID, sheets]);
+  }, [user, navigate, spreadsheetId, filterUserEmail, filterUniqueID]);
 
   const handleFilterUserEmailChange = (event) => {
     setFilterUserEmail(event.target.value);
