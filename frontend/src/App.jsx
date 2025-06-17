@@ -6,7 +6,6 @@ import {
   Route,
   useNavigate,
 } from "react-router-dom";
-import useGoogleAuth from "./hooks/UseGoogleAuth";
 import { UserContext } from "./contexts/UserContext";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -20,19 +19,9 @@ import AuditLogPage from "./pages/AuditLogPage";
 import CarbonImpactDashboard from "./pages/CarbonImpactDashboard";
 
 function App() {
-  const { gapiLoaded } = useGoogleAuth();
   const [user, setUser] = useState(null);
   const [sheets, setSheets] = useState([]);
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
-
-  if (!gapiLoaded) {
-    return (
-      <div className="loading-message">
-        <i className="fas fa-spinner fa-spin"></i>
-        <p>로딩중...</p>
-      </div>
-    );
-  }
 
   return (
     <Router>
@@ -94,12 +83,6 @@ function UserProvider({
           setUser(data.user);
           if (data.user.sheet_file) {
             setSheets([]);
-          }
-          if (data.user.accessToken && window.gapi && window.gapi.client) {
-            window.gapi.client.setToken({
-              access_token: data.user.accessToken,
-            });
-            console.log("GAPI token:", window.gapi.client.getToken());
           }
         }
       } catch (error) {
