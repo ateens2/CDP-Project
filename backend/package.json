@@ -16,9 +16,7 @@
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "express-session": "^1.18.1",
-    "googleapis": "^148.0.0",
-    "mysql2": "^3.14.0",
-    "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0"
+    "googleapis": "^150.0.1",
+    "sqlite3": "^5.1.7"
   }
 }

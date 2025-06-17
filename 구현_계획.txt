@@ -1,0 +1,92 @@
+# CDP 프로젝트 더미 데이터 전환 구현 계획
+
+## 현재 상황 분석
+- 백엔드: Google OAuth + MySQL 사용
+- 프론트엔드: Google 인증 및 Sheets API 의존
+- 데이터: 이미 SQLite dummy.db 파일 존재, GRM 더미 데이터.xlsx 파일 존재
+
+## 구현 목표
+1. Google 로그인 기능 제거 (버튼은 유지, 클릭 시 바로 메인 페이지 이동)
+2. MySQL → SQLite 전환
+3. Google Sheets → 로컬 Excel 파일 사용
+4. 인증 없이 더미 사용자로 자동 로그인
+
+## 구현 계획 (3단계)
+
+### 1단계: 백엔드 인증 시스템 단순화
+**목표**: Google OAuth 제거하고 더미 사용자로 자동 인증
+
+**작업 내용**:
+- `backend/routes/auth.js` 수정
+  - Google OAuth 라우트 제거
+  - `/auth/google` 경로를 더미 로그인으로 변경 (바로 메인 페이지 리디렉션)
+  - `/auth/me` 엔드포인트에서 고정된 더미 사용자 정보 반환
+- `backend/app.js` 수정
+  - passport 관련 설정 제거
+  - session 설정 단순화
+- MySQL → SQLite 전환
+  - mysql2 → sqlite3 라이브러리 변경
+  - 연결 설정 변경 (dummy.db 사용)
+  - 기존 테이블 구조 유지
+
+**예상 소요시간**: 2-3시간
+
+### 2단계: 스프레드시트 기능을 로컬 파일 처리로 변경
+**목표**: Google Sheets API 대신 로컬 Excel 파일 처리
+
+**작업 내용**:
+- `backend/routes/sheets.js` 대폭 수정
+  - Google Sheets API 호출 제거
+  - Excel 파일 읽기 라이브러리 추가 (xlsx, exceljs 등)
+  - `/data/GRM 더미 데이터.xlsx` 파일을 읽어서 데이터 반환
+  - 기존 API 구조 유지하되 내부 로직만 변경
+- 필요한 npm 패키지 추가
+  - `xlsx` 또는 `exceljs` 라이브러리
+  - `multer` (파일 업로드, 필요시)
+
+**예상 소요시간**: 3-4시간
+
+### 3단계: 프론트엔드 인증 플로우 수정
+**목표**: 인증 없이 자동으로 더미 사용자로 로그인
+
+**작업 내용**:
+- `frontend/src/auth/Login.js` 수정
+  - `loginWithGoogle` 함수를 단순 페이지 이동으로 변경
+- `frontend/src/App.jsx` 수정
+  - Google Auth 관련 로직 제거
+  - `useGoogleAuth` 훅 사용 중단
+  - 더미 사용자 정보로 자동 설정
+- `frontend/src/hooks/UseGoogleAuth.js` 수정 또는 제거
+  - GAPI 로딩 로직 제거
+- `frontend/src/contexts/UserContext.jsx` 수정
+  - 더미 사용자 정보 하드코딩
+- 불필요한 의존성 제거
+  - Google API 관련 라이브러리
+
+**예상 소요시간**: 2-3시간
+
+## 더미 데이터 설정
+- **더미 사용자 정보**:
+  - 이메일: dummy@example.com (이미 SQLite에 존재)
+  - 이름: 홍길동
+  - 권한: admin
+  - 시트 파일: "GRM 더미 데이터.xlsx"
+
+- **더미 스프레드시트 데이터**:
+  - `/data/GRM 더미 데이터.xlsx` 파일 사용
+  - 기존과 동일한 시트 구조 유지
+
+## 주의사항
+1. 기존 API 엔드포인트 구조 최대한 유지
+2. 프론트엔드 컴포넌트의 인터페이스 변경 최소화
+3. 에러 처리 로직 유지
+4. 개발 완료 후 충분한 테스트 필요
+
+## 최종 결과
+- Google 로그인 버튼 클릭 → 바로 메인 페이지 이동
+- MySQL 의존성 제거 → SQLite 사용
+- 인터넷 연결 없이도 로컬에서 완전 동작
+- 더미 데이터로 모든 기능 테스트 가능
+
+**총 예상 소요시간**: 7-10시간
+**우선순위**: 1단계 → 2단계 → 3단계 순서로 진행 

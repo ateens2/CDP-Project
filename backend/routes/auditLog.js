@@ -51,7 +51,7 @@ router.get('/sheet/:spreadsheetId', isAdmin, async (req, res) => {
   const { spreadsheetId } = req.params;
   const { userEmail, UniqueID } = req.query; // 필터링 옵션
 
-  if (!req.isAuthenticated()) { // 인증된 사용자인지 먼저 확인
+  if (!req.session.user) { // 인증된 사용자인지 먼저 확인
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
@@ -61,7 +61,7 @@ router.get('/sheet/:spreadsheetId', isAdmin, async (req, res) => {
 
   try {
     const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: req.user.accessToken });
+    oauth2Client.setCredentials({ access_token: req.session.user.accessToken });
     const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
 
     // 시트가 없으면 생성
