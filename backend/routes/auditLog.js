@@ -1,126 +1,135 @@
 const express = require('express');
 const router = express.Router();
-const { google } = require('googleapis');
-require('dotenv').config();
-const { isAdmin } = require('../middleware/authMiddleware');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 
-const CHANGE_HISTORY_SHEET_NAME = 'ChangeHistory'; // 시트 이름을 상수로 정의
-const CHANGE_HISTORY_HEADERS = ['Timestamp', 'UserEmail', 'UniqueID', 'FieldName', 'OldValue', 'NewValue'];
+// SQLite 연결 설정
+const dbPath = path.join(__dirname, '../dummy.db');
+const db = new sqlite3.Database(dbPath);
 
-// ChangeHistory 시트 존재 확인 및 생성 함수
-async function ensureChangeHistorySheetExists(sheets, spreadsheetId) {
-  try {
-    const spreadsheetInfo = await sheets.spreadsheets.get({ spreadsheetId });
-    const historySheet = spreadsheetInfo.data.sheets.find(
-      (s) => s.properties.title === CHANGE_HISTORY_SHEET_NAME
-    );
-
-    if (!historySheet) {
-      console.log(`'${CHANGE_HISTORY_SHEET_NAME}' 시트가 없어 새로 생성합니다.`);
-      await sheets.spreadsheets.batchUpdate({
-        spreadsheetId,
-        resource: {
-          requests: [
-            {
-              addSheet: {
-                properties: { title: CHANGE_HISTORY_SHEET_NAME },
-              },
-            },
-          ],
-        },
-      });
-      // 새 시트에 헤더 추가
-      await sheets.spreadsheets.values.update({
-        spreadsheetId,
-        range: `'${CHANGE_HISTORY_SHEET_NAME}'!A1`,
-        valueInputOption: 'USER_ENTERED',
-        resource: { values: [CHANGE_HISTORY_HEADERS] },
-      });
-      console.log(`'${CHANGE_HISTORY_SHEET_NAME}' 시트 생성 및 헤더 추가 완료`);
-      return true;
-    }
-    return true;
-  } catch (error) {
-    console.error(`시트 생성 중 오류 발생:`, error);
-    throw error;
-  }
-}
-
-// GET /api/auditlog/sheet/:spreadsheetId - 특정 스프레드시트의 변경 이력 조회 (관리자 전용)
-router.get('/sheet/:spreadsheetId', isAdmin, async (req, res) => {
-  const { spreadsheetId } = req.params;
-  const { userEmail, UniqueID } = req.query; // 필터링 옵션
-
+// Audit Log 조회
+router.get('/', async (req, res) => {
   if (!req.session.user) { // 인증된 사용자인지 먼저 확인
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  if (!spreadsheetId) {
-    return res.status(400).json({ message: 'Spreadsheet ID is required.' });
+  try {
+    console.log('Audit Log 조회 요청 (더미 데이터 사용)');
+    
+    // 더미 감사 로그 데이터 생성
+    const dummyAuditLogs = [
+      {
+        id: 1,
+        timestamp: '2024-06-17T10:30:00.000Z',
+        action: 'CREATE',
+        resource: 'Customer',
+        userId: 'dummy@example.com',
+        userName: '홍길동',
+        details: '새 고객 생성 - ID: CUST001',
+        ipAddress: '127.0.0.1'
+      },
+      {
+        id: 2,
+        timestamp: '2024-06-17T11:15:00.000Z',
+        action: 'UPDATE',
+        resource: 'Product',
+        userId: 'dummy@example.com',
+        userName: '홍길동',
+        details: '상품 정보 수정 - 친환경 세제 가격 변경',
+        ipAddress: '127.0.0.1'
+      },
+      {
+        id: 3,
+        timestamp: '2024-06-17T12:00:00.000Z',
+        action: 'DELETE',
+        resource: 'Order',
+        userId: 'dummy@example.com',
+        userName: '홍길동',
+        details: '주문 취소 - 주문번호: ORD000123',
+        ipAddress: '127.0.0.1'
+      },
+      {
+        id: 4,
+        timestamp: '2024-06-17T13:45:00.000Z',
+        action: 'VIEW',
+        resource: 'Dashboard',
+        userId: 'dummy@example.com',
+        userName: '홍길동',
+        details: '탄소 영향 대시보드 조회',
+        ipAddress: '127.0.0.1'
+      },
+      {
+        id: 5,
+        timestamp: '2024-06-17T14:20:00.000Z',
+        action: 'EXPORT',
+        resource: 'Report',
+        userId: 'dummy@example.com',
+        userName: '홍길동',
+        details: '월간 탄소 감축 리포트 내보내기',
+        ipAddress: '127.0.0.1'
+      }
+    ];
+    
+    console.log(`더미 감사 로그 ${dummyAuditLogs.length}건 반환`);
+    
+    res.json({
+      success: true,
+      auditLogs: dummyAuditLogs,
+      total: dummyAuditLogs.length
+    });
+    
+  } catch (error) {
+    console.error('Audit Log 조회 중 오류:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch audit logs', 
+      error: error.message 
+    });
+  }
+});
+
+// 새 감사 로그 기록
+router.post('/', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
   }
 
   try {
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: req.session.user.accessToken });
-    const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
-
-    // 시트가 없으면 생성
-    await ensureChangeHistorySheetExists(sheets, spreadsheetId);
-
-    // ChangeHistory 시트 전체 데이터 가져오기 (작은따옴표로 시트명 감싸기)
-    console.log(`ChangeHistory 시트에서 데이터 가져오기 시작. 스프레드시트 ID: ${spreadsheetId}`);
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${CHANGE_HISTORY_SHEET_NAME}'!A:F`, // 작은따옴표로 시트명 감싸기
-    });
-
-    console.log('ChangeHistory 시트 원본 데이터:', response.data.values);
-
-    const rows = response.data.values;
-    if (!rows || rows.length < 2) { // 헤더만 있거나 데이터가 없는 경우
-      console.log('ChangeHistory 시트에 데이터가 없음');
-      return res.json({ auditLog: [] });
-    }
-
-    const headers = rows[0];
-    console.log('ChangeHistory 시트 헤더:', headers);
+    const { action, resource, details } = req.body;
     
-    let auditLogData = rows.slice(1).map(row => {
-      let entry = {};
-      headers.forEach((header, index) => {
-        entry[header] = row[index];
+    if (!action || !resource) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Action and resource are required' 
       });
-      return entry;
-    });
-
-    console.log(`ChangeHistory 시트에서 ${auditLogData.length}개 레코드 파싱 완료`);
-    console.log('파싱된 첫 번째 레코드:', auditLogData[0]);
-
-    // 필터링 적용
-    if (userEmail) {
-      auditLogData = auditLogData.filter(entry => entry.UserEmail && entry.UserEmail.toLowerCase().includes(userEmail.toLowerCase()));
-    }
-    if (UniqueID) {
-      // UniqueID는 보통 정확히 일치하는 것을 찾으므로 includes 대신 === 사용 고려
-      auditLogData = auditLogData.filter(entry => entry.UniqueID === UniqueID);
     }
     
-    // 최신순 정렬 (Timestamp 기준)
-    auditLogData.sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp));
-
-    console.log(`최종적으로 ${auditLogData.length}개 레코드 반환`);
-    console.log('반환할 첫 번째 레코드:', auditLogData[0]);
-
-    res.json({ auditLog: auditLogData });
-
+    // 더미 감사 로그 기록 (실제로는 SQLite DB에 저장 가능)
+    const auditLogEntry = {
+      timestamp: new Date().toISOString(),
+      action: action,
+      resource: resource,
+      userId: req.session.user.email,
+      userName: req.session.user.name,
+      details: details || '',
+      ipAddress: req.ip || req.connection.remoteAddress || '127.0.0.1'
+    };
+    
+    console.log('새 감사 로그 기록 (더미):', auditLogEntry);
+    
+    res.json({
+      success: true,
+      message: 'Audit log recorded successfully',
+      auditLog: auditLogEntry
+    });
+    
   } catch (error) {
-    console.error("Error fetching sheet audit log:", error);
-    const apiError =
-      error.errors && error.errors[0] && error.errors[0].message
-        ? error.errors[0].message
-        : error.message;
-    const statusCode = error.code && Number.isInteger(error.code) ? error.code : 500;
-    res.status(statusCode || 500).json({ message: 'Failed to fetch audit log from sheet.', error: apiError });
+    console.error('감사 로그 기록 중 오류:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to record audit log', 
+      error: error.message 
+    });
   }
 });
 
