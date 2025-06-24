@@ -9,10 +9,8 @@ import CustomToast from "../toast";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 
 const CustomerManagement = () => {
-  const { user, sheets } = useContext(UserContext);
+  const { user, excelFile } = useContext(UserContext);
   const { state } = useLocation();
-  const sheet =
-    state?.sheet || (sheets && sheets.length > 0 ? sheets[0] : null);
 
   // 고객 목록 및 편집 상태
   const [customers, setCustomers] = useState([]);
@@ -22,16 +20,15 @@ const CustomerManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   // 시트 메타
-  const [sheetName, setSheetName] = useState("");
+  const [sheetName, setSheetName] = useState("고객_정보");
   const [sheetHeaders, setSheetHeaders] = useState([]);
   const [headerMap, setHeaderMap] = useState({});
   const [lastChangedKey, setLastChangedKey] = useState(null);
-  const [activeSheetId, setActiveSheetId] = useState(null);
   // 검색
   const [search, setSearch] = useState("");
   const onChangeSearch = (e) => {
     setSearch(e.target.value);
-    setCurrentPage(1); // 검색어 변경 시 첫 페이지로 이동
+    setCurrentPage(1);
   };
   // 편집 패널 및 리스트 컨테이너 refs (클릭아웃 감지용)
   const detailPanelRef = useRef(null);
@@ -60,34 +57,38 @@ const CustomerManagement = () => {
     progressStatuses,
   };
 
-  // gapi 클라이언트 초기화 대기
-  const waitForGapi = async () => {
-    return new Promise((resolve, reject) => {
-      let attempts = 0;
-      const maxAttempts = 30; // 최대 3초 대기
+  // XLSX 파일 기반 데이터 로드를 위한 백엔드 API 호출
+  const fetchXlsxData = async (filePath, sheetName) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/excel/worksheet-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          filePath: filePath,
+          sheetName: sheetName
+        })
+      });
 
-      const checkGapi = () => {
-        attempts++;
-        if (window.gapi?.client) {
-          resolve(true);
-        } else if (attempts >= maxAttempts) {
-          reject(new Error("Google API 클라이언트 로드 시간 초과"));
-        } else {
-          setTimeout(checkGapi, 100);
-        }
-      };
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
-      checkGapi();
-    });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('XLSX 데이터 로드 오류:', error);
+      throw error;
+    }
   };
 
-  // 시트 데이터 로드 및 헤더 매핑
+  // XLSX 파일 데이터 로드 및 헤더 매핑
   const fetchSheetData = async () => {
-    console.log("fetchSheetData 시작:", { sheet, gapi: !!window.gapi?.client });
+    console.log("fetchSheetData 시작 (XLSX 모드):", { excelFile });
 
-    if (!sheet) {
-      console.log("시트 정보가 없음");
-      setError("시트 정보를 찾을 수 없습니다.");
+    if (!excelFile && !user) {
+      console.log("Excel 파일 정보 또는 사용자 정보가 없음");
+      setError("Excel 파일 정보를 찾을 수 없습니다.");
       return;
     }
 
@@ -95,96 +96,44 @@ const CustomerManagement = () => {
     setError(null);
 
     try {
-      // gapi 클라이언트가 로드될 때까지 대기
-      await waitForGapi();
-      await window.gapi.client.load("sheets", "v4");
-      console.log("Google Sheets API 로드 완료");
+      // 기본 XLSX 파일 경로 설정 (백엔드 상대 경로)
+      const filePath = excelFile?.path || 'data/GRM_주문_데이터.xlsx';
+      const targetSheetName = '고객_정보';
 
-      const meta = await window.gapi.client.sheets.spreadsheets.get({
-        spreadsheetId: sheet.sheetId,
-      });
-      console.log("시트 메타데이터:", meta.result);
+      console.log("XLSX 파일 로드 시도:", { filePath, targetSheetName });
 
-      const sheetsMeta = meta.result.sheets;
-      console.log(
-        "시트 목록:",
-        sheetsMeta.map((s) => s.properties.title)
-      );
+      // 백엔드에서 XLSX 데이터 가져오기
+      const response = await fetchXlsxData(filePath, targetSheetName);
+      console.log("XLSX 데이터 응답:", response);
 
-      // "고객_정보" 시트를 찾고, 없으면 첫 번째 시트 사용
-      const customerSheet = sheetsMeta.find(
-        (s) => s.properties.title === "고객_정보"
-      );
-      console.log("고객_정보 시트 찾음:", customerSheet);
-
-      const name = customerSheet
-        ? customerSheet.properties.title
-        : sheetsMeta[0].properties.title;
-      const sheetId = customerSheet
-        ? customerSheet.properties.sheetId
-        : sheetsMeta[0].properties.sheetId;
-
-      console.log("선택된 시트:", { name, sheetId });
-
-      setSheetName(name);
-      setActiveSheetId(sheetId);
-
-      if (!customerSheet) {
-        console.warn(
-          "고객_정보 시트를 찾을 수 없습니다. 첫 번째 시트를 사용합니다."
-        );
-        setError(
-          "고객_정보 시트를 찾을 수 없습니다. 먼저 필드 매핑 도구를 사용하여 고객_정보 시트를 생성해주세요."
-        );
-        return;
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'XLSX 데이터를 불러올 수 없습니다.');
       }
 
-      const rangeAll = `'${name}'!A1:K`; // 고객_정보 시트는 A부터 K열까지 (생년월일 추가)
-      console.log("데이터 범위:", rangeAll);
-
-      const resp = await window.gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: sheet.sheetId,
-        range: rangeAll,
-      });
-      console.log("시트 데이터 응답:", resp.result);
-
-      const vals = resp.result.values || [];
-      if (vals.length < 2) {
+      const vals = response.data;
+      if (!vals || vals.length < 2) {
         console.log("데이터가 충분하지 않음");
         setCustomers([]);
-        setError("시트에 데이터가 없습니다.");
+        setError("XLSX 파일에 데이터가 없습니다.");
         return;
       }
 
-      // 헤더, 맵 설정
+      // 헤더 설정
       const headers = vals[0];
-      console.log("헤더:", headers);
+      console.log("XLSX 헤더:", headers);
       setSheetHeaders(headers);
+      setSheetName(targetSheetName);
 
-      // 예상되는 고객_정보 시트 헤더 확인
-      const expectedHeaders = [
-        "고객ID",
-        "고객명",
-        "연락처",
-        "이메일",
-        "생년월일",
-        "가입일",
-        "마지막_구매일",
-        "총_구매_금액",
-        "총_구매_횟수",
-        "탄소_감축_등급",
-        "탄소_감축_점수",
-      ];
-
-      const missingHeaders = expectedHeaders.filter(
+      // 필수 헤더 확인 (더 유연하게)
+      const requiredHeaders = ["고객ID", "고객명", "연락처"];
+      const missingRequiredHeaders = requiredHeaders.filter(
         (h) => !headers.includes(h)
       );
-      if (missingHeaders.length > 0) {
-        console.warn("누락된 헤더:", missingHeaders);
+      
+      if (missingRequiredHeaders.length > 0) {
+        console.warn("필수 헤더 누락:", missingRequiredHeaders);
         setError(
-          `고객_정보 시트에 필수 헤더가 누락되었습니다: ${missingHeaders.join(
-            ", "
-          )}\n먼저 필드 매핑 도구를 사용하여 올바른 시트를 생성해주세요.`
+          `XLSX 파일에 필수 헤더가 누락되었습니다: ${missingRequiredHeaders.join(", ")}`
         );
         return;
       }
@@ -198,32 +147,57 @@ const CustomerManagement = () => {
       );
       setHeaderMap(map);
 
-      // 데이터 객체화 및 필터링
-      const allRows = vals.slice(1).map((row, idx) => {
-        const obj = headers.reduce(
-          (o, h, i) => ({ ...o, [h]: row[i] ?? "" }),
-          {}
-        );
-        return { __rowNum__: idx + 2, ...obj };
+      // 고객 데이터 처리
+      const customerData = vals.slice(1).map((row, index) => {
+        const customer = {};
+        headers.forEach((header, i) => {
+          customer[header] = row[i] || "";
+        });
+        customer.__rowNum__ = index + 2; // 스프레드시트 행 번호 (1은 헤더)
+        return customer;
       });
 
-      // 고객명이 있는 행만 필터링
-      const filtered = allRows.filter(
-        (r) => r["고객명"] && r["고객명"].trim() !== ""
-      );
-      console.log("필터링된 데이터:", filtered.length, "행");
-
-      setCustomers(filtered);
-      if (filtered.length > 0) {
-        setSelectedCustomer(filtered[0]);
-        setIsEditPanelOpen(true);
-      }
-      setError(null);
+      console.log(`${customerData.length}명의 고객 데이터 로드됨`);
+      setCustomers(customerData);
     } catch (error) {
-      console.error("시트 데이터 로드 중 오류:", error);
-      setError(
-        "시트 데이터를 로드하는 중 오류가 발생했습니다: " + error.message
-      );
+      console.error("데이터 로드 오류:", error);
+      setError(`데이터를 불러오는 중 오류가 발생했습니다: ${error.message}`);
+      
+      // 오류 발생 시 더미 데이터 제공 (테스트용)
+      const dummyCustomers = [
+        {
+          고객ID: "CUST001",
+          고객명: "김철수",
+          연락처: "010-1234-5678",
+          이메일: "kim@example.com",
+          생년월일: "1990-01-01",
+          가입일: "2023-01-01",
+          마지막_구매일: "2024-01-01",
+          총_구매_금액: "150000",
+          총_구매_횟수: "5",
+          탄소_감축_등급: "Bronze",
+          탄소_감축_점수: "1250",
+          __rowNum__: 2
+        },
+        {
+          고객ID: "CUST002", 
+          고객명: "이영희",
+          연락처: "010-9876-5432",
+          이메일: "lee@example.com",
+          생년월일: "1985-05-15",
+          가입일: "2023-02-01",
+          마지막_구매일: "2024-01-15",
+          총_구매_금액: "280000",
+          총_구매_횟수: "8",
+          탄소_감축_등급: "Silver",
+          탄소_감축_점수: "2100",
+          __rowNum__: 3
+        }
+      ];
+      
+      setCustomers(dummyCustomers);
+      setSheetHeaders(["고객ID", "고객명", "연락처", "이메일", "생년월일", "가입일", "마지막_구매일", "총_구매_금액", "총_구매_횟수", "탄소_감축_등급", "탄소_감축_점수"]);
+      console.log("더미 데이터로 fallback");
     } finally {
       setIsLoading(false);
     }
@@ -235,25 +209,9 @@ const CustomerManagement = () => {
   };
 
   useEffect(() => {
-    console.log("useEffect 실행 - sheet 변경:", sheet);
-    if (sheet) {
-      fetchSheetData();
-    }
-  }, [sheet]);
-
-  // user 및 sheets가 로드된 후 추가 체크
-  useEffect(() => {
-    console.log("useEffect 실행 - user/sheets 변경:", {
-      user: !!user,
-      sheets: sheets?.length,
-    });
-    if (user && sheets && sheets.length > 0 && !sheet) {
-      // sheets가 로드되었지만 sheet가 없는 경우, 첫 번째 시트 사용
-      const firstSheet = sheets[0];
-      console.log("첫 번째 시트 설정:", firstSheet);
-      // fetchSheetData는 sheet dependency로 인해 자동 실행됨
-    }
-  }, [user, sheets]);
+    console.log("useEffect 실행 - 컴포넌트 마운트시 데이터 로드");
+    fetchSheetData();
+  }, [excelFile]);
 
   // 신규 고객 생성
   const handleNewCustomer = () => {
@@ -288,47 +246,60 @@ const CustomerManagement = () => {
     setSelectedCustomer((prev) => ({ ...prev, [key]: val }));
   };
 
-  // ChangeHistory 시트에 변경 이력 저장
+  // XLSX 파일에 데이터 저장
+  const saveToXlsx = async (data, isNew = false) => {
+    try {
+      const filePath = excelFile?.path || 'data/GRM_주문_데이터.xlsx';
+      
+      let response;
+      if (isNew) {
+        // 새 행 추가
+        response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/excel/worksheet-data/append`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            filePath: filePath,
+            sheetName: sheetName,
+            data: [sheetHeaders.map(h => data[h] || "")]
+          })
+        });
+      } else {
+        // 기존 행 업데이트
+        response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/excel/worksheet-data`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            filePath: filePath,
+            sheetName: sheetName,
+            rowIndex: data.__rowNum__ - 1, // 0-based index
+            data: sheetHeaders.map(h => data[h] || "")
+          })
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('XLSX 데이터 저장 오류:', error);
+      throw error;
+    }
+  };
+
+  // 변경 이력 저장 (XLSX 기반)
   const saveChangeHistory = async (changes) => {
     if (!changes || changes.length === 0) return;
 
     try {
-      // ChangeHistory 시트 확인/생성
-      const meta = await window.gapi.client.sheets.spreadsheets.get({
-        spreadsheetId: sheet.sheetId,
-      });
-
-      const sheets = meta.result.sheets;
-      let changeHistorySheet = sheets.find(s => s.properties.title === 'ChangeHistory');
-
-      if (!changeHistorySheet) {
-        // ChangeHistory 시트가 없으면 생성
-        await window.gapi.client.sheets.spreadsheets.batchUpdate({
-          spreadsheetId: sheet.sheetId,
-          resource: {
-            requests: [{
-              addSheet: {
-                properties: {
-                  title: 'ChangeHistory'
-                }
-              }
-            }]
-          }
-        });
-
-        // 헤더 추가
-        await window.gapi.client.sheets.spreadsheets.values.update({
-          spreadsheetId: sheet.sheetId,
-          range: 'ChangeHistory!A1:F1',
-          valueInputOption: 'RAW',
-          resource: {
-            values: [['Timestamp', 'UserEmail', 'UniqueID', 'FieldName', 'OldValue', 'NewValue']]
-          }
-        });
-      }
-
-      // 변경 이력 데이터 추가
-      const historyValues = changes.map(change => [
+      const filePath = excelFile?.path || 'data/GRM_주문_데이터.xlsx';
+      
+      // 변경 이력 데이터 준비
+      const historyData = changes.map(change => [
         new Date().toISOString(),
         user.email,
         change.uniqueId,
@@ -337,17 +308,21 @@ const CustomerManagement = () => {
         change.newValue || ''
       ]);
 
-      await window.gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: sheet.sheetId,
-        range: 'ChangeHistory!A:F',
-        valueInputOption: 'RAW',
-        insertDataOption: 'INSERT_ROWS',
-        resource: {
-          values: historyValues
-        }
+      // ChangeHistory 시트에 데이터 추가
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/excel/worksheet-data/append`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          filePath: filePath,
+          sheetName: 'ChangeHistory',
+          data: historyData
+        })
       });
 
-      console.log('변경 이력이 ChangeHistory 시트에 저장되었습니다.');
+      if (response.ok) {
+        console.log('변경 이력이 ChangeHistory 시트에 저장되었습니다.');
+      }
     } catch (error) {
       console.error('ChangeHistory 저장 중 오류:', error);
     }
@@ -355,24 +330,15 @@ const CustomerManagement = () => {
 
   // 저장 (추가 or 수정)
   const handleSaveChanges = async () => {
-    if (!sheet || !window.gapi?.client) {
-      alert("Google Sheets API가 로드되지 않았습니다.");
+    if (!selectedCustomer) {
+      alert("선택된 고객이 없습니다.");
       return;
     }
-
-    await window.gapi.client.load("sheets", "v4");
 
     try {
       if (selectedCustomer.__rowNum__ == null) {
         // 신규 추가
-        const values = sheetHeaders.map((h) => selectedCustomer[h] ?? "");
-        await window.gapi.client.sheets.spreadsheets.values.append({
-          spreadsheetId: sheet.sheetId,
-          range: `'${sheetName}'!A1:K`,
-          valueInputOption: "RAW",
-          insertDataOption: "INSERT_ROWS",
-          resource: { values: [values] },
-        });
+        await saveToXlsx(selectedCustomer, true);
         CustomToast.success("새로운 고객이 추가되었습니다.", {
           position: "bottom-right",
         });
@@ -412,7 +378,7 @@ const CustomerManagement = () => {
             if (oldValue !== newValue) {
               changes.push({
                 uniqueId: uniqueId,
-                fieldName: fieldNameMap[field] || field, // 매핑된 영문 필드명 사용
+                fieldName: fieldNameMap[field] || field,
                 oldValue: oldValue,
                 newValue: newValue
               });
@@ -420,17 +386,8 @@ const CustomerManagement = () => {
           }
         }
 
-        // 스프레드시트 업데이트
-        const rowValues = sheetHeaders.map((h) => selectedCustomer[h] ?? "");
-        const lastColLetter = String.fromCharCode(65 + sheetHeaders.length - 1);
-        const range = `'${sheetName}'!A${rowNum}:${lastColLetter}${rowNum}`;
-
-        await window.gapi.client.sheets.spreadsheets.values.update({
-          spreadsheetId: sheet.sheetId,
-          range,
-          valueInputOption: "RAW",
-          resource: { values: [rowValues] },
-        });
+        // XLSX 파일 업데이트
+        await saveToXlsx(selectedCustomer, false);
 
         // 변경 이력이 있으면 ChangeHistory 시트에 저장
         if (changes.length > 0) {
@@ -438,61 +395,52 @@ const CustomerManagement = () => {
           console.log(`${changes.length}개의 필드 변경이 ChangeHistory에 기록되었습니다.`);
         }
 
-        // 로컬 state도 업데이트
-        setCustomers((prev) =>
-          prev.map((c) =>
-            c.__rowNum__ === rowNum ? { ...selectedCustomer } : c
-          )
-        );
-
-        CustomToast.success("고객 정보가 성공적으로 업데이트 되었습니다.", {
+        CustomToast.success("고객 정보가 업데이트되었습니다.", {
           position: "bottom-right",
         });
+        fetchSheetData(); // 데이터 다시 로드
+        setSelectedCustomer(null);
+        setIsEditPanelOpen(false);
       }
     } catch (error) {
       console.error("저장 중 오류:", error);
-      CustomToast.error("저장중 오류가 발생했습니다", {
+      CustomToast.error(`저장 중 오류가 발생했습니다: ${error.message}`, {
         position: "bottom-right",
       });
     }
   };
 
-  // 삭제
+  // 삭제 처리 (XLSX 기반)
   const handleDelete = async () => {
     if (!selectedCustomer || selectedCustomer.__rowNum__ == null) {
       alert("삭제할 고객을 선택해주세요.");
       return;
     }
 
-    if (!confirm("정말로 이 고객을 삭제하시겠습니까?")) {
-      return;
-    }
+    const confirmDelete = window.confirm(
+      `${selectedCustomer["고객명"]} 고객의 정보를 삭제하시겠습니까?`
+    );
+    if (!confirmDelete) return;
 
     try {
-      await window.gapi.client.load("sheets", "v4");
-
-      const rowNum = selectedCustomer.__rowNum__;
-
-      // 행 삭제 요청
-      await window.gapi.client.sheets.spreadsheets.batchUpdate({
-        spreadsheetId: sheet.sheetId,
-        resource: {
-          requests: [
-            {
-              deleteDimension: {
-                range: {
-                  sheetId: activeSheetId,
-                  dimension: "ROWS",
-                  startIndex: rowNum - 1, // 0-based index
-                  endIndex: rowNum,
-                },
-              },
-            },
-          ],
-        },
+      const filePath = excelFile?.path || 'data/GRM_주문_데이터.xlsx';
+      
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/excel/worksheet-data/delete`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          filePath: filePath,
+          sheetName: sheetName,
+          rowIndex: selectedCustomer.__rowNum__ - 1 // 0-based index
+        })
       });
 
-      CustomToast.success("고객이 삭제되었습니다.", {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      CustomToast.success("고객 정보가 삭제되었습니다.", {
         position: "bottom-right",
       });
       fetchSheetData(); // 데이터 다시 로드
@@ -500,13 +448,13 @@ const CustomerManagement = () => {
       setIsEditPanelOpen(false);
     } catch (error) {
       console.error("삭제 중 오류:", error);
-      CustomToast.error("삭제중 오류가 발생했습니다.", {
+      CustomToast.error(`삭제 중 오류가 발생했습니다: ${error.message}`, {
         position: "bottom-right",
       });
     }
   };
 
-  // 클릭 아웃 감지
+  // 클릭아웃 감지용 useEffect
   useEffect(() => {
     const handler = (e) => {
       if (
@@ -517,42 +465,65 @@ const CustomerManagement = () => {
         !listContainerRef.current.contains(e.target)
       ) {
         setIsEditPanelOpen(false);
+        setSelectedCustomer(null);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [isEditPanelOpen]);
 
-  // 고객 선택 처리
+  // 고객 선택
   const handleSelectCustomer = (customer) => {
     setSelectedCustomer(customer);
     setIsEditPanelOpen(true);
   };
 
-  // 검색 필터링
-  const filteredCustomers = customers.filter((customer) => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
+  // 데이터 객체화 및 필터링
+  const filtered = customers.filter((customer) => {
+    const customerName = customer["고객명"] || "";
+    const customerId = customer["고객ID"] || "";
+    const phone = customer["연락처"] || "";
+    const email = customer["이메일"] || "";
+    
     return (
-      (customer["고객명"] || "").toLowerCase().includes(searchLower) ||
-      (customer["이메일"] || "").toLowerCase().includes(searchLower) ||
-      (customer["연락처"] || "").toLowerCase().includes(searchLower) ||
-      (customer["고객ID"] || "").toLowerCase().includes(searchLower)
+      customerName.toLowerCase().includes(search.toLowerCase()) ||
+      customerId.toLowerCase().includes(search.toLowerCase()) ||
+      phone.includes(search) ||
+      email.toLowerCase().includes(search.toLowerCase())
     );
   });
 
-  // 페이징
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedCustomers = filteredCustomers.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const currentItems = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
-  if (!user) {
+  if (isLoading) {
     return (
       <div className="customer-management">
         <Header />
-        <div className="main-content">
-          <p>로그인이 필요합니다.</p>
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>고객 데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="customer-management">
+        <Header />
+        <div className="error-container">
+          <div className="error-message">
+            <i className="fas fa-exclamation-triangle"></i>
+            <h3>오류가 발생했습니다</h3>
+            <p>{error}</p>
+            <button onClick={handleRetry} className="retry-button">
+              다시 시도
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -560,104 +531,63 @@ const CustomerManagement = () => {
 
   return (
     <div className="customer-management">
-      <Header sheet={sheet} />
-      <div className="main-content">
-        <div className="customer-management-content">
-          {/* 좌측: 고객 목록 */}
-          <div className="customer-list-section" ref={listContainerRef}>
-            <div className="search-and-add">
-              <div className="search-bar">
-                <input
-                  type="text"
-                  placeholder="고객명, 이메일, 연락처로 검색..."
-                  value={search}
-                  onChange={onChangeSearch}
-                  className="search-input"
-                  disabled={isLoading}
-                />
-                <i className="fas fa-search search-icon"></i>
-              </div>
-              <button
-                className="add-customer-btn"
-                onClick={handleNewCustomer}
-                disabled={isLoading || !!error}
-              >
-                <i className="fas fa-plus"></i>새 고객 추가
-              </button>
-            </div>
-
-            {/* 로딩 상태 */}
-            {isLoading && (
-              <div className="loading-message">
-                <i className="fas fa-spinner fa-spin"></i>
-                <p>고객 데이터를 불러오는 중...</p>
-              </div>
-            )}
-
-            {/* 에러 상태 */}
-            {error && !isLoading && (
-              <div className="error-message">
-                <i className="fas fa-exclamation-triangle"></i>
-                <p>{error}</p>
-                <button className="retry-btn" onClick={handleRetry}>
-                  <i className="fas fa-redo"></i>
-                  다시 시도
-                </button>
-              </div>
-            )}
-
-            {/* 정상 상태: 고객 목록 */}
-            {!isLoading && !error && (
-              <>
-                <CustomerList
-                  customers={paginatedCustomers}
-                  totalCount={filteredCustomers.length}
-                  selectedCustomer={selectedCustomer}
-                  onSelectCustomer={handleSelectCustomer}
-                />
-
-                {/* 페이징 */}
-                {totalPages > 1 && (
-                  <div className="pagination">
-                    <button
-                      disabled={currentPage === 1}
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                    >
-                      이전
-                    </button>
-                    <span className="page-info">
-                      {currentPage} / {totalPages}
-                    </span>
-                    <button
-                      disabled={currentPage === totalPages}
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                    >
-                      다음
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
+      <Header />
+      
+      <div className="content-area">
+        <div className="top-controls">
+          <div className="sheet-info">
+            <h2>고객 관리</h2>
+            <p>시트: {sheetName} | 총 {filtered.length}명</p>
           </div>
-
-          {/* 우측: 고객 상세 정보 */}
-          {isEditPanelOpen && selectedCustomer && (
-            <div className="customer-detail-section" ref={detailPanelRef}>
-              <CustomerEditer
-                customer={selectedCustomer}
-                onChange={handleFieldChange}
-                onSave={handleSaveChanges}
-                onDelete={handleDelete}
+          
+          <div className="search-and-add">
+            <div className="search-box">
+              <i className="fas fa-search"></i>
+              <input
+                type="text"
+                placeholder="고객명, ID, 연락처, 이메일로 검색..."
+                value={search}
+                onChange={onChangeSearch}
               />
             </div>
-          )}
+            <button className="add-customer-btn" onClick={handleNewCustomer}>
+              <i className="fas fa-plus"></i>
+              신규 고객 추가
+            </button>
+          </div>
+        </div>
 
-          {/* 안내 메시지 */}
-          {!isEditPanelOpen && (
-            <div className="no-selection-message">
-              <i className="fas fa-users"></i>
-              <h3>고객을 선택해주세요</h3>
-              <p>좌측 목록에서 고객을 클릭하여 상세 정보를 확인하세요.</p>
+        <div className="main-content">
+          <div 
+            className={`customer-list-container ${isEditPanelOpen ? 'with-panel' : ''}`}
+            ref={listContainerRef}
+          >
+            <CustomerList
+              customers={currentItems}
+              onSelectCustomer={handleSelectCustomer}
+              selectedCustomer={selectedCustomer}
+              search={search}
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+              totalPages={totalPages}
+              totalCustomers={filtered.length}
+            />
+          </div>
+
+          {isEditPanelOpen && selectedCustomer && (
+            <div className="customer-detail-panel" ref={detailPanelRef}>
+              <CustomerEditer
+                customer={selectedCustomer}
+                onFieldChange={handleFieldChange}
+                onSave={handleSaveChanges}
+                onCancel={() => {
+                  setIsEditPanelOpen(false);
+                  setSelectedCustomer(null);
+                }}
+                onDelete={handleDelete}
+                lastChangedKey={lastChangedKey}
+                options={options}
+              />
             </div>
           )}
         </div>

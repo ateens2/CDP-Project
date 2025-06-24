@@ -6,7 +6,6 @@ import {
   Route,
   useNavigate,
 } from "react-router-dom";
-import useGoogleAuth from "./hooks/UseGoogleAuth";
 import { UserContext } from "./contexts/UserContext";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -20,26 +19,32 @@ import AuditLogPage from "./pages/AuditLogPage";
 import CarbonImpactDashboard from "./pages/CarbonImpactDashboard";
 
 function App() {
-  const { gapiLoaded } = useGoogleAuth();
-  const [user, setUser] = useState(null);
-  const [sheets, setSheets] = useState([]);
-  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+  // 더미 사용자 자동 로그인
+  const [user, setUser] = useState({
+    id: 'dummy_user_001',
+    name: '테스트 사용자',
+    email: 'test@example.com', 
+    role: 'admin'
+  });
+  
+  // XLSX 파일 정보 설정
+  const [excelFile, setExcelFile] = useState({
+    name: 'GRM_주문_데이터.xlsx',
+    path: 'data/GRM_주문_데이터.xlsx',
+    type: 'xlsx'
+  });
 
-  if (!gapiLoaded) {
-    return (
-      <div className="loading-message">
-        <i className="fas fa-spinner fa-spin"></i>
-        <p>로딩중...</p>
-      </div>
-    );
-  }
+  // 하위 호환성을 위한 sheets 접근자 제공
+  const sheets = [{ name: excelFile.name, sheetId: 'xlsx-file' }];
+  const setSheets = () => {}; // no-op
 
   return (
     <Router>
       <UserProvider
-        backendUrl={backendUrl}
         user={user}
         setUser={setUser}
+        excelFile={excelFile}
+        setExcelFile={setExcelFile}
         sheets={sheets}
         setSheets={setSheets}
       >
@@ -52,7 +57,7 @@ function App() {
           <Route path="/carbon-impact" element={<CarbonImpactDashboard />} />
           <Route path="/profile" element={<UserDetailPage />} />
           <Route path="/audit-log" element={<AuditLogPage />} />
-          <Route path="/" element={user ? <Workspace /> : <InitialPage />} />
+          <Route path="/" element={<Workspace />} />
         </Routes>
       </UserProvider>
     </Router>
@@ -60,68 +65,28 @@ function App() {
 }
 
 function UserProvider({
-  backendUrl,
   user,
   setUser,
+  excelFile,
+  setExcelFile,
   sheets,
   setSheets,
   children,
 }) {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchSession() {
-      try {
-        const res = await fetch(`${backendUrl}/auth/me`, {
-          credentials: "include",
-        });
-        if (res.status === 401) {
-          console.log("Not authenticated: user remains null.");
-          setLoading(false);
-          return;
-        } else if (res.status === 404) {
-          const data = await res.json();
-          console.log("User not found in DB: redirecting to signup.");
-          setLoading(false);
-          navigate("/signup", { state: { googleEmail: data.googleEmail } });
-          return;
-        } else if (!res.ok) {
-          throw new Error("Failed to fetch session info");
-        }
-        const data = await res.json();
-        if (data.user) {
-          setUser(data.user);
-          if (data.user.sheet_file) {
-            setSheets([]);
-          }
-          if (data.user.accessToken && window.gapi && window.gapi.client) {
-            window.gapi.client.setToken({
-              access_token: data.user.accessToken,
-            });
-            console.log("GAPI token:", window.gapi.client.getToken());
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching session info:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchSession();
-  }, [backendUrl, navigate, setUser, setSheets]);
-
-  if (loading) {
-    return (
-      <div className="loading-message">
-        <i className="fas fa-spinner fa-spin"></i>
-        <p>로딩중...</p>
-      </div>
-    );
-  }
+  console.log('더미 사용자 자동 로그인:', user);
+  console.log('XLSX 파일 설정:', excelFile);
 
   return (
-    <UserContext.Provider value={{ user, setUser, sheets, setSheets }}>
+    <UserContext.Provider 
+      value={{ 
+        user, 
+        setUser, 
+        excelFile, 
+        setExcelFile,
+        sheets, // 하위 호환성
+        setSheets // 하위 호환성
+      }}
+    >
       {children}
     </UserContext.Provider>
   );

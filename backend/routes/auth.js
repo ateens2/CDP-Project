@@ -182,11 +182,28 @@ router.post('/google/updateSheet', async (req, res) => {
   }
 });
 
-// 6. 현재 로그인한 사용자 정보 반환 (/auth/me)
-//    세션 기반이며, DB에서 사용자 정보를 조회한 후, 세션에 저장된 accessToken을 추가하여 반환
+// 6. 현재 로그인한 사용자 정보 반환 (/auth/me) - 더미 사용자 모드
 router.get('/me', async (req, res) => {
-  console.log("GET /auth/me 요청 도착");
-  console.log("User info from session:", req.user);
+  console.log("GET /auth/me 요청 도착 (더미 사용자 모드)");
+  
+  // 더미 사용자 데이터 반환 (Google 로그인 우회)
+  const dummyUser = {
+    id: 'dummy_user_001',
+    email: 'test@example.com',
+    name: '테스트 사용자',
+    phone: '010-0000-0000',
+    role: 'admin',
+    accessToken: null, // Google API 불필요
+    sheet_file: null
+  };
+  
+  console.log("더미 사용자 반환:", dummyUser);
+  return res.json({ 
+    user: dummyUser
+  });
+  
+  // 원래 Google 인증 코드 (주석 처리)
+  /*
   if (req.isAuthenticated()) {
     const userEmail = req.user.email;
     let connection;
@@ -227,11 +244,11 @@ router.get('/me', async (req, res) => {
       console.error("Error in /auth/me:", err);
       res.status(500).json({ message: err.message });
     }
-  } else {
-    res.status(401).json({ user: null });
-  }
+      } else {
+      res.status(401).json({ user: null });
+    }
+  */
 });
-
 
 // 7. 로그아웃 엔드포인트
 router.get('/logout', (req, res, next) => {

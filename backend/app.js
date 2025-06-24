@@ -5,6 +5,7 @@ const session = require('express-session');
 const passport = require('passport');
 const authRoutes = require('./routes/auth');
 const sheetsRoutes = require('./routes/sheets');
+const excelRoutes = require('./routes/excel');
 const auditLogRoutes = require('./routes/auditLog');
 
 const app = express();
@@ -38,6 +39,7 @@ app.use(passport.session());
 // 라우트 등록
 app.use('/auth', authRoutes);
 app.use('/api/sheets', sheetsRoutes);
+app.use('/api/excel', excelRoutes);
 app.use('/api/auditlog', auditLogRoutes);
 
 app.get('/', (req, res) => {
