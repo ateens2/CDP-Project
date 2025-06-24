@@ -19,7 +19,22 @@ const Workspace = () => {
 
   useEffect(() => {
     const loadSheetInfo = async () => {
-      if (user?.sheet_file && sheets.length === 0 && window.gapi?.client) {
+      // 먼저 로컬 XLSX 파일을 자동으로 설정
+      if (sheets.length === 0) {
+        const xlsxFile = {
+          name: "GRM_주문_데이터.xlsx",
+          sheetId: "xlsx-local-file",
+          type: "xlsx",
+          path: "/data/GRM_주문_데이터.xlsx"
+        };
+        setSheets([xlsxFile]);
+        setSelectedSheet(xlsxFile);
+        console.log("로컬 XLSX 파일 자동 설정:", xlsxFile);
+        return;
+      }
+
+      // 기존 Google Sheets 로직 (fallback)
+      if (user?.sheet_file && window.gapi?.client) {
         try {
           await window.gapi.client.load("drive", "v3");
           const response = await window.gapi.client.drive.files.get({
@@ -27,16 +42,25 @@ const Workspace = () => {
             fields: "id, name",
           });
           const fileData = response.result;
-          const newSheet = { name: fileData.name, sheetId: fileData.id };
+          const newSheet = { name: fileData.name, sheetId: fileData.id, type: "google" };
           setSheets([newSheet]);
           setSelectedSheet(newSheet);
         } catch (error) {
           console.error("Error retrieving file info:", error);
+          // Google Sheets 로드 실패 시 XLSX 파일로 fallback
+          const xlsxFile = {
+            name: "GRM_주문_데이터.xlsx",
+            sheetId: "xlsx-local-file", 
+            type: "xlsx",
+            path: "/data/GRM_주문_데이터.xlsx"
+          };
+          setSheets([xlsxFile]);
+          setSelectedSheet(xlsxFile);
         }
       }
     };
     loadSheetInfo();
-  }, [setSheets, sheets.length, user.sheet_file]);
+  }, [setSheets, sheets.length, user?.sheet_file]);
 
   const handleDriveSheetSelect = async (sheet) => {
     const newSheet = { name: sheet.name, sheetId: sheet.id };
@@ -105,10 +129,13 @@ const Workspace = () => {
                 <div className="existing-sheet-info">
                   {sheets.map((sheet, index) => (
                     <div key={index} className="existing-sheet-item">
-                      <div className="sheet-icon">📊</div>
+                      <div className="sheet-icon">{sheet.type === 'xlsx' ? '📄' : '📊'}</div>
                       <div className="sheet-details">
                         <div className="sheet-name">{sheet.name}</div>
-                        <div className="sheet-id">ID: {sheet.sheetId}</div>
+                        <div className="sheet-id">
+                          {sheet.type === 'xlsx' ? `파일: ${sheet.path}` : `ID: ${sheet.sheetId}`}
+                        </div>
+                        <div className="sheet-type">{sheet.type === 'xlsx' ? 'XLSX 파일' : 'Google Sheets'}</div>
                       </div>
                       <div className="sheet-actions">
                         <button
@@ -140,12 +167,18 @@ const Workspace = () => {
               </div>
             ) : (
               <div className="no-sheet-wrapper">
-                <p>연결된 스프레드시트가 없습니다.</p>
+                <p>데이터 파일을 로딩 중입니다...</p>
+                <div style={{marginTop: '10px'}}>
+                  <p style={{fontSize: '14px', color: '#666'}}>
+                    GRM_주문_데이터.xlsx 파일을 확인하고 있습니다.
+                  </p>
+                </div>
                 <button
                   className="select-sheet-btn"
                   onClick={() => setShowDriveSelector(true)}
+                  style={{marginTop: '15px'}}
                 >
-                  Google Drive에서 스프레드시트 선택
+                  Google Drive에서 스프레드시트 선택 (대안)
                 </button>
               </div>
             )}
