@@ -4,7 +4,11 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node app.js"
+    "start": "node app.js",
+    "build-win": "pkg app.js -t node18-win-x64 -o ../dist/cdp-server-win.exe",
+    "build-mac": "pkg app.js -t node18-macos-x64 -o ../dist/cdp-server-mac",
+    "build-linux": "pkg app.js -t node18-linux-x64 -o ../dist/cdp-server-linux",
+    "build-all": "npm run build-win && npm run build-mac && npm run build-linux"
   },
   "keywords": [],
   "author": "",
@@ -22,5 +26,20 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "scripts": [
+      "routes/*.js",
+      "middleware/*.js",
+      "utils/*.js"
+    ],
+    "assets": [
+      "../frontend/dist/**/*",
+      "data/*.xlsx"
+    ],
+    "outputPath": "../dist/"
   }
 }

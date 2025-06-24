@@ -19,6 +19,10 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// 프론트엔드 정적 파일 서빙
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
 // express-session 설정: sameSite 옵션 추가
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -42,8 +46,19 @@ app.use('/api/sheets', sheetsRoutes);
 app.use('/api/excel', excelRoutes);
 app.use('/api/auditlog', auditLogRoutes);
 
+// 루트 경로에서 React 앱 반환
 app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to CDP API!' });
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
+
+// SPA 라우팅을 위한 fallback (API 경로가 아닌 경우만)
+app.use((req, res, next) => {
+  // API 요청인 경우 다음 미들웨어로
+  if (req.path.startsWith('/auth') || req.path.startsWith('/api')) {
+    return next();
+  }
+  // React 앱 반환
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 const PORT = process.env.PORT || 3000;

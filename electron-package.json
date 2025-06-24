@@ -1,0 +1,61 @@
+{
+  "name": "cdp-project-desktop",
+  "version": "1.0.0",
+  "description": "CDP 프로젝트 데스크톱 앱",
+  "main": "electron-main.js",
+  "author": "CDP Team",
+  "license": "MIT",
+  "scripts": {
+    "electron": "electron .",
+    "electron-dev": "NODE_ENV=development electron .",
+    "build-electron-win": "electron-builder --win",
+    "build-electron-mac": "electron-builder --mac",
+    "build-electron-linux": "electron-builder --linux",
+    "build-electron-all": "electron-builder --win --mac --linux",
+    "pack": "electron-builder --dir",
+    "dist": "npm run build-frontend && npm run build-electron-win"
+  },
+  "build": {
+    "appId": "com.cdp.project",
+    "productName": "CDP 프로젝트",
+    "directories": {
+      "output": "electron-dist"
+    },
+    "files": [
+      "electron-main.js",
+      "loading.html",
+      "backend/**/*",
+      "frontend/dist/**/*",
+      "!backend/node_modules/**/*",
+      "!**/node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/node_modules",
+        "to": "backend/node_modules"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "frontend/dist/Logo.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "frontend/dist/Logo.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "frontend/dist/Logo.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.0.0"
+  }
+} 
