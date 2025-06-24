@@ -158,7 +158,7 @@ const CarbonImpactDashboard = () => {
     }
 
     try {
-      setLoading(true);
+    setLoading(true);
       setError(null);
       
       await window.gapi.client.load("sheets", "v4");
@@ -1016,7 +1016,7 @@ const CarbonImpactDashboard = () => {
         if (stats.totalPurchases >= 5) {
           if (ecoRatio >= 0.5) {
             segmentData.champions++;
-          } else {
+        } else {
             segmentData.loyalists++;
           }
         } else if (stats.totalPurchases >= 2) {
@@ -1312,7 +1312,7 @@ const CarbonImpactDashboard = () => {
       setEngagementDetails(calculatedData.engagementDetails);
       setAvailableYears(calculatedData.years);
       setLastUpdated(new Date().toISOString());
-      
+
       console.log('탄소_감축 시트 업데이트 완료');
 
     } catch (error) {

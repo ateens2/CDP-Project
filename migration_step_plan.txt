@@ -1,0 +1,241 @@
+# 구글 스프레드시트 → XLSX 파일 마이그레이션 단계별 실행 계획
+
+## 전체 작업 개요
+현재 Google Sheets API 기반 시스템을 로컬 XLSX 파일(`data/GRM_주문_데이터.xlsx`) 기반으로 변경
+
+## 단계별 실행 계획
+
+### PHASE 1: 백엔드 기반 구축 (1-3단계)
+#### 목표: XLSX 파일 처리를 위한 백엔드 인프라 구축
+
+### PHASE 2: API 전환 (4-6단계)  
+#### 목표: Google Sheets API에서 XLSX API로 전환
+
+### PHASE 3: 프론트엔드 변경 (7-9단계)
+#### 목표: 프론트엔드에서 Google API 의존성 제거 및 새 API 연동
+
+### PHASE 4: 마무리 및 최적화 (10-12단계)
+#### 목표: 불필요한 코드 정리, 테스트, 배포 준비
+
+---
+
+## 단계 1: 패키지 의존성 변경
+**소요시간**: 10분
+**파일**: `backend/package.json`, `frontend/package.json`
+
+### 작업 내용:
+1. 백엔드: `xlsx`, `multer` 설치, `googleapis` 제거
+2. 프론트엔드: `xlsx` 설치
+3. 패키지 설치 및 확인
+
+### 성공 기준:
+- [ ] 백엔드에 xlsx, multer 설치 완료
+- [ ] googleapis 패키지 제거 완료
+- [ ] 프론트엔드에 xlsx 설치 완료
+- [ ] npm install 오류 없음
+
+---
+
+## 단계 2: XLSX 유틸리티 함수 생성
+**소요시간**: 30분
+**파일**: `backend/utils/excelHelper.js` (신규)
+
+### 작업 내용:
+1. XLSX 파일 읽기/쓰기 기본 함수 구현
+2. 워크시트 조작 함수 구현
+3. 에러 처리 및 유효성 검사 추가
+
+### 성공 기준:
+- [ ] readExcelFile() 함수 구현
+- [ ] writeExcelFile() 함수 구현
+- [ ] getSheetNames() 함수 구현
+- [ ] 기본 에러 처리 구현
+
+---
+
+## 단계 3: Excel API 라우트 생성
+**소요시간**: 45분
+**파일**: `backend/routes/excel.js` (신규)
+
+### 작업 내용:
+1. 새로운 라우트 파일 생성
+2. 기본 CRUD 엔드포인트 구현
+3. app.js에 라우트 등록
+
+### 성공 기준:
+- [ ] /api/excel/worksheets 엔드포인트 구현
+- [ ] /api/excel/worksheet-data GET/POST/PUT/DELETE 구현
+- [ ] app.js에 라우트 등록 완료
+- [ ] 기본 API 테스트 성공
+
+---
+
+## 단계 4: 기존 sheets.js 라우트 변환
+**소요시간**: 60분
+**파일**: `backend/routes/sheets.js`
+
+### 작업 내용:
+1. Google Sheets API 호출을 XLSX 파일 처리로 변경
+2. 기존 엔드포인트 로직 유지하면서 구현체만 변경
+3. 에러 처리 및 응답 형식 통일
+
+### 성공 기준:
+- [ ] 모든 sheets 엔드포인트가 XLSX 기반으로 동작
+- [ ] 기존 API 응답 형식 유지
+- [ ] Google API 의존성 완전 제거
+
+---
+
+## 단계 5: auditLog.js 라우트 변환
+**소요시간**: 30분
+**파일**: `backend/routes/auditLog.js`
+
+### 작업 내용:
+1. Google Sheets API 제거
+2. XLSX 파일의 'ChangeHistory' 시트 읽기로 변경
+3. 감사 로그 기능 유지
+
+### 성공 기준:
+- [ ] auditLog API가 XLSX 기반으로 동작
+- [ ] ChangeHistory 시트 읽기/쓰기 정상 동작
+- [ ] 기존 감사 로그 기능 유지
+
+---
+
+## 단계 6: 인증 시스템 간소화
+**소요시간**: 45분
+**파일**: `backend/routes/auth.js`
+
+### 작업 내용:
+1. Google OAuth 관련 코드 제거
+2. 기본 세션 기반 인증으로 변경
+3. 필요시 JWT 토큰 기반 인증 구현
+
+### 성공 기준:
+- [ ] Google OAuth 의존성 제거
+- [ ] 기본 인증 시스템 동작
+- [ ] 세션 관리 정상 동작
+
+---
+
+## 단계 7: UserContext 변경
+**소요시간**: 20분
+**파일**: `frontend/src/contexts/UserContext.jsx`
+
+### 작업 내용:
+1. sheets 상태를 excelFile 상태로 변경
+2. Google Sheets 관련 상태 제거
+3. 고정된 파일 경로 사용
+
+### 성공 기준:
+- [ ] Context에서 Google Sheets 의존성 제거
+- [ ] 새로운 상태 관리 구조 적용
+- [ ] 컴포넌트 간 상태 공유 정상 동작
+
+---
+
+## 단계 8: 주요 페이지 변환 (CustomerManagement)
+**소요시간**: 60분
+**파일**: `frontend/src/pages/CustomerManagement.jsx`
+
+### 작업 내용:
+1. Google Sheets API 호출을 백엔드 API 호출로 변경
+2. API 엔드포인트 변경 (/api/sheets/ → /api/excel/)
+3. 기존 기능 유지하면서 구현체만 변경
+
+### 성공 기준:
+- [ ] 고객 정보 조회 기능 정상 동작
+- [ ] 고객 정보 수정 기능 정상 동작
+- [ ] Google API 의존성 완전 제거
+
+---
+
+## 단계 9: 나머지 페이지들 변환
+**소요시간**: 90분
+**파일**: 
+- `frontend/src/pages/CarbonImpactDashboard.jsx`
+- `frontend/src/pages/DataAnalytics.jsx`
+- `frontend/src/pages/AuditLogPage.jsx`
+- `frontend/src/components/SheetEditor.jsx`
+
+### 작업 내용:
+1. 각 페이지별로 Google API 제거
+2. 새로운 백엔드 API 연동
+3. 기존 기능 유지
+
+### 성공 기준:
+- [ ] CarbonImpactDashboard 페이지 정상 동작
+- [ ] DataAnalytics 페이지 정상 동작
+- [ ] AuditLogPage 정상 동작
+- [ ] SheetEditor 컴포넌트 정상 동작
+
+---
+
+## 단계 10: 불필요한 컴포넌트 제거
+**소요시간**: 30분
+**파일**: 
+- `frontend/src/components/DriveSheetSelector.jsx` (제거)
+- `frontend/src/hooks/UseGoogleAuth.js` (제거 또는 수정)
+
+### 작업 내용:
+1. Google Drive 의존성 컴포넌트 제거
+2. Google OAuth 훅 제거
+3. 관련 import 문 정리
+
+### 성공 기준:
+- [ ] 불필요한 컴포넌트 완전 제거
+- [ ] import 에러 없음
+- [ ] 빌드 오류 없음
+
+---
+
+## 단계 11: 테스트 및 검증
+**소요시간**: 60분
+
+### 작업 내용:
+1. 전체 기능 테스트
+2. 데이터 무결성 검사
+3. 에러 상황 테스트
+4. 성능 확인
+
+### 성공 기준:
+- [ ] 모든 페이지 정상 로딩
+- [ ] CRUD 기능 정상 동작
+- [ ] 에러 처리 정상 동작
+- [ ] 성능 이슈 없음
+
+---
+
+## 단계 12: 마무리 및 정리
+**소요시간**: 30분
+
+### 작업 내용:
+1. 사용하지 않는 코드 정리
+2. 의존성 패키지 정리
+3. 환경 변수 정리
+4. 문서화 업데이트
+
+### 성공 기준:
+- [ ] 코드 정리 완료
+- [ ] package.json 정리 완료
+- [ ] 환경 변수 정리 완료
+- [ ] README 업데이트 완료
+
+---
+
+## 전체 예상 소요시간: 약 8-10시간
+## 각 단계별 완료 후 다음 단계 진행
+## 문제 발생시 즉시 해결 후 진행
+
+---
+
+## 주요 위험 요소 및 대응책:
+1. **XLSX 파일 락 이슈**: 동시 접근 제어 구현
+2. **데이터 손실**: 작업 전 백업 생성
+3. **성능 저하**: 대용량 파일 처리 최적화
+4. **기능 누락**: 단계별 철저한 테스트
+
+## 롤백 계획:
+- 각 단계별 Git 커밋
+- 주요 변경사항 전 브랜치 생성
+- 문제 발생시 이전 단계로 복원 

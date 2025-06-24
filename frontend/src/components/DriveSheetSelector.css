@@ -1,173 +1,157 @@
-/* DriveSheetSelector.css */
+.drive-sheet-selector {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
 
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-  
-  /* Modal container */
-  .modal-content {
-    display: flex;
-    flex-direction: column;
-    /* 기존 스타일 유지 */
-    background: #fff;
-    padding: 1.5rem;
-    border-radius: 8px;
-    max-width: 90%;
-    max-height: 90%;
-    overflow-y: auto;
-  }
-  .cancel-button {
-    align-self: flex-end;
-    margin-top: 1rem;
-    width: 120px;
-    padding: 0.75rem 1.25rem;
-    font-size: 1rem;
-    border: none;
-    border-radius: 999px;
-    background-color: #f0f0f0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: background-color 0.2s ease, box-shadow 0.2s ease;
-  }
-  
-  .cancel-button:hover {
-    background-color: #e0e0e0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-  
-  
-  /* Modal header */
-  .modal-content h3 {
-    margin: 0 0 16px;
-    font-size: 1.5rem;
-    color: #333;
-  }
-  
-  /* Spreadsheet list container */
-  .drive-sheet-selector ul {
-    list-style: none;
-    margin: 0 0 24px;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 300px;
-    overflow-y: auto;
-  }
-  
-  /* Spreadsheet item wrapper */
-  .sheet-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 16px;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    background: #fafafa;
-    transition: background 0.2s, transform 0.1s;
-  }
-  
-  /* Button reset & text styling */
-  .sheet-item button {
-    background: none;
-    border: none;
-    padding: 0;
-    margin: 0;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-    flex: 1;
-    color: #333;
-    font-size: 1rem;
-  }
-  
-  /* Hover effect on item */
-  .sheet-item:hover {
-    background: #f0f0f0;
-    transform: translateY(-1px);
-  }
-  
-  /* Selected state */
-  .sheet-item.selected {
-    background: #e3f2fd;
-    border-color: #90caf9;
-  }
-  
-  /* Icon next to sheet name */
-  .sheet-item-icon {
-    flex-shrink: 0;
-    margin-left: 12px;
-    font-size: 1.25rem;
-    color: #1976d2;
-  }
-  
-  /* Meta info text */
-  .sheet-item-info {
-    margin-left: 12px;
-    font-size: 0.85rem;
-    color: #777;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  
-  /* Footer action buttons container */
-  .modal-buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-  }
-  
-  /* Footer buttons */
-  .modal-buttons button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  
-  .modal-buttons button.select {
-    background-color: #1976d2;
-    color: #fff;
-  }
-  
-  .modal-buttons button.select:hover {
-    background-color: #155fa0;
-  }
-  
-  .modal-buttons button.cancel {
-    background-color: #e0e0e0;
-    color: #333;
-  }
-  
-  .modal-buttons button.cancel:hover {
-    background-color: #c6c6c6;
-  }
-  
-  /* Standalone Cancel button at bottom */
-  .drive-sheet-selector > button {
-    align-self: flex-end;
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    background-color: #e0e0e0;
-    color: #333;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: background 0.2s;
-    margin-top: 16px;
-  }
-  
-  .drive-sheet-selector > button:hover {
-    background-color: #c6c6c6;
-  }
-  
+.drive-sheet-selector h2 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 24px;
+  text-align: center;
+}
+
+.file-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.file-item {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #f9f9f9;
+}
+
+.file-item:hover {
+  border-color: #4285f4;
+  background: #f0f7ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.file-item.selected {
+  border-color: #4285f4;
+  background: #e3f2fd;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+}
+
+.file-name {
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.file-modified {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.file-type {
+  color: #888;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.loading-spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #4285f4;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 2s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error {
+  color: #d32f2f;
+  text-align: center;
+  padding: 20px;
+  background: #ffebee;
+  border-radius: 4px;
+  margin: 20px 0;
+}
+
+.no-files {
+  text-align: center;
+  color: #666;
+  padding: 40px;
+  font-style: italic;
+}
+
+.refresh-button {
+  background: #4285f4;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 10px;
+  transition: background-color 0.3s;
+}
+
+.refresh-button:hover {
+  background: #3367d6;
+}
+
+.refresh-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.select-button {
+  background: #34a853;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 20px;
+  width: 100%;
+  transition: background-color 0.3s;
+}
+
+.select-button:hover:not(:disabled) {
+  background: #137e32;
+}
+
+.select-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.search-box {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.search-box:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+} 

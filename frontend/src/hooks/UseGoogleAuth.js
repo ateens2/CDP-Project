@@ -1,108 +1,109 @@
-// src/hooks/UseGoogleAuth.js
-import { useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from 'react';
 
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
-const DISCOVERY_DOCS = [
-  "https://sheets.googleapis.com/$discovery/rest?version=v4",
-  "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
-];
-const SCOPES = "openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive";
-
-function useGoogleAuth() {
-  const [gapiLoaded, setGapiLoaded] = useState(false);
+const useGoogleAuth = () => {
   const [isSignedIn, setIsSignedIn] = useState(false);
-  const [tokenClient, setTokenClient] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(true); // 즉시 true로 설정
+  const [gapiLoaded, setGapiLoaded] = useState(true); // 즉시 true로 설정
+  const [user, setUser] = useState(null);
 
-  useEffect(() => {
-    const loadScript = (src) => {
-      return new Promise((resolve, reject) => {
-        const existingScript = document.querySelector(`script[src="${src}"]`);
-        if (existingScript) {
-          resolve();
-          return;
+  // Google API 초기화 (선택적, 실패해도 계속 진행)
+  const initializeGoogleAPI = useCallback(async () => {
+    try {
+      if (typeof window !== 'undefined' && window.gapi) {
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            console.log('Google API 로드 타임아웃 - 계속 진행');
+            resolve();
+          }, 3000); // 3초 타임아웃
+          
+          window.gapi.load('auth2', () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+        });
+
+        const authInstance = window.gapi.auth2.getAuthInstance();
+        if (authInstance) {
+          const isSignedInStatus = authInstance.isSignedIn.get();
+          setIsSignedIn(isSignedInStatus);
+          
+          if (isSignedInStatus) {
+            const currentUser = authInstance.currentUser.get();
+            const profile = currentUser.getBasicProfile();
+            setUser({
+              id: profile.getId(),
+              name: profile.getName(),
+              email: profile.getEmail(),
+              imageUrl: profile.getImageUrl()
+            });
+          }
         }
-        const script = document.createElement("script");
-        script.src = src;
-        script.async = true;
-        script.defer = true;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.body.appendChild(script);
-      });
-    };
-
-    const initializeGoogleAuth = async () => {
-      try {
-        // Load Google Identity Services and gapi
-        await loadScript("https://accounts.google.com/gsi/client");
-        await loadScript("https://apis.google.com/js/api.js");
-        await new Promise((resolve) => {
-          window.gapi.load("client", resolve);
-        });
-        await window.gapi.client.init({
-          apiKey: API_KEY,
-          discoveryDocs: DISCOVERY_DOCS,
-        });
-        setGapiLoaded(true);
-
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID,
-          scope: SCOPES,
-          // 일반 signIn 호출 시 팝업이 뜨게 됩니다.
-          callback: (response) => {
-            console.log("OAuth response:", response);
-            if (response.access_token) {
-              setIsSignedIn(true);
-              window.gapi.client.setToken({ access_token: response.access_token });
-            }
-          },
-        });
-        setTokenClient(client);
-      } catch (error) {
-        console.error("Error initializing Google Auth:", error);
       }
-    };
-
-    initializeGoogleAuth();
+    } catch (error) {
+      console.error('Google API 초기화 오류 (무시됨):', error);
+    } finally {
+      setIsInitialized(true);
+      setGapiLoaded(true);
+    }
   }, []);
 
-  // 기존 signIn: 기본적으로 팝업을 띄웁니다.
-  const signIn = () => {
-    if (!tokenClient) {
-      console.error("Token client not initialized");
-      return;
-    }
+  // 로그인
+  const signIn = useCallback(async () => {
     try {
-      tokenClient.requestAccessToken();
+      if (window.gapi && window.gapi.auth2) {
+        const authInstance = window.gapi.auth2.getAuthInstance();
+        const googleUser = await authInstance.signIn();
+        const profile = googleUser.getBasicProfile();
+        
+        setUser({
+          id: profile.getId(),
+          name: profile.getName(),
+          email: profile.getEmail(),
+          imageUrl: profile.getImageUrl()
+        });
+        setIsSignedIn(true);
+        
+        return googleUser;
+      } else {
+        throw new Error('Google API를 사용할 수 없습니다.');
+      }
     } catch (error) {
-      console.error("Error signing in:", error);
+      console.error('로그인 오류:', error);
+      throw error;
     }
-  };
+  }, []);
 
-  // silentSignIn: prompt 없이 토큰 요청 (팝업 없이 시도)
-  const silentSignIn = () => {
-    if (!tokenClient) {
-      console.error("Token client not initialized");
-      return;
-    }
+  // 로그아웃
+  const signOut = useCallback(async () => {
     try {
-      tokenClient.requestAccessToken({ prompt: "none" });
+      if (window.gapi && window.gapi.auth2) {
+        const authInstance = window.gapi.auth2.getAuthInstance();
+        await authInstance.signOut();
+        setUser(null);
+        setIsSignedIn(false);
+      }
     } catch (error) {
-      console.error("Error in silent sign in:", error);
+      console.error('로그아웃 오류:', error);
     }
+  }, []);
+
+  useEffect(() => {
+    // 즉시 초기화 완료로 설정
+    setIsInitialized(true);
+    setGapiLoaded(true);
+    
+    // Google API 초기화를 시도하지만 실패해도 계속 진행
+    initializeGoogleAPI();
+  }, [initializeGoogleAPI]);
+
+  return {
+    isSignedIn,
+    isInitialized,
+    gapiLoaded, // App.jsx에서 사용하는 속성
+    user,
+    signIn,
+    signOut
   };
+};
 
-  const signOut = async () => {
-    const token = window.gapi.client.getToken();
-    if (token) {
-      window.google.accounts.oauth2.revoke(token.access_token);
-      window.gapi.client.setToken("");
-      setIsSignedIn(false);
-    }
-  };
-
-  return { gapiLoaded, isSignedIn, signIn, silentSignIn, signOut };
-}
-
-export default useGoogleAuth;
+export default useGoogleAuth; 
